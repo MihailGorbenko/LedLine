@@ -16,15 +16,14 @@ private:
     int width = MATRIX_WIDTH;
     int height = MATRIX_HEIGHT;
     uint8_t masterBrightness = DEF_BRIGHTNESS; // Мастер яркость (глобальная)
+    int XY(int x, int y); 
 public:
 
     LedMatrix();
     void init();
-    CRGB* getLeds();
     void clear();
     void update();
     void powerOff();
-    int XY(int x, int y);
     int getWidth() const{ return width; };
     int getHeight() const{ return height; };
     int getNumLeds() const{ return NUM_LEDS; };

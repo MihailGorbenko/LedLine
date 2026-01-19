@@ -13,10 +13,6 @@ void LedMatrix::init() {
     update();
 }
 
-CRGB* LedMatrix::getLeds() {
-    return leds;
-}
-
 void LedMatrix::clear() {
     fill_solid(baseLeds, NUM_LEDS, CRGB::Black); // ...очищаем буфер оригинальных цветов...
     fill_solid(leds, NUM_LEDS, CRGB::Black);

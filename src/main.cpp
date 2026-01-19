@@ -1,14 +1,11 @@
 #include <Arduino.h>
 #include "LedMatrix.hpp"
-#include "AiEsp32RotaryEncoder.h"
+#include "RotaryEncoder.hpp" // заменили библиотеку
 
-#define ROTARY_CLK 4
-#define ROTARY_DT 3
-#define ROTARY_SW 5
 #define ROTARY_STEPS 1
 
 LedMatrix matrix;
-AiEsp32RotaryEncoder rotary(ROTARY_CLK, ROTARY_DT, ROTARY_SW, -1, ROTARY_STEPS);
+RotaryEncoder rotary; // теперь без параметров
 
 uint8_t currentBrightness = 16;
 uint8_t hueOffset = 0;
@@ -19,15 +16,6 @@ const unsigned long refreshMs = 50;
 // button / mode change state
 bool colorAdjustMode = false; // true = вращение меняет цвет, краткое нажатие выходит в режим выбора
 bool colorLocked = false; // true = пользователь подтвердил и цвет должен быть зафиксирован
-unsigned long btnPressedTime = 0;
-bool btnDown = false;
-bool longPressHandled = false; // <-- добавлено: флаг для обработки долгого удержания
-const unsigned long longPressMs = 1000; // ms для долгого нажатия (1+ сек)
-// debounce variables for rotary switch
-int lastSwRaw = HIGH;
-int swStateDebounced = HIGH;
-unsigned long lastDebounceTime = 0;
-const unsigned long debounceMs = 50; // антидребезг: 50 ms
 
 // режимы: 0 = gradient, 1 = stars, 2 = lamp ignition, 3 = blue gas discharge
 int mode = 0;
@@ -48,10 +36,6 @@ bool lampStable = false;
 // добавлено: параметры газового разряда
 float gasEnergy[NUM_LEDS];
 float gasAdd[NUM_LEDS];
-
-void IRAM_ATTR readEncoderISR() {
-	rotary.readEncoder_ISR();
-}
 
 // добавлено: инициализация фаз/амплитуд/скоростей/таймеров для звезд
 void initStars() {
@@ -81,24 +65,59 @@ void initGas() {
 	randomSeed(micros());
 }
 
+// Listener: адаптер между событием RotaryEncoder и текущей логикой
+class MainRotaryListener : public RotaryEncoder::IEncoderListener {
+public:
+    void onEvent(RotaryEncoder::Event ev, int value) override {
+        if (ev == RotaryEncoder::INCREMENT || ev == RotaryEncoder::DECREMENT) {
+            int mapped = constrain(value * 2, 0, 255);
+            if (colorAdjustMode) {
+                hueOffset = (uint8_t)mapped;
+                hueOffsetFloat = (float)hueOffset;
+                Serial.print("Hue: "); Serial.println(hueOffset);
+            } else {
+                currentBrightness = (uint8_t)mapped;
+                matrix.setMasterBrightness(currentBrightness);
+                Serial.print("Brightness: "); Serial.println(currentBrightness);
+            }
+        } else if (ev == RotaryEncoder::PRESS) {
+            if (colorAdjustMode) {
+                colorAdjustMode = false;
+                colorLocked = true;
+                rotary.setValue(currentBrightness / 2);
+                Serial.println("Exited Color Adjust Mode -> Selection Mode");
+            } else {
+                mode = (mode + 1) % 4;
+                if (mode == 1) { initStars(); Serial.println("Mode: Stars"); }
+                else if (mode == 2) { initLamp(); Serial.println("Mode: Lamp ignition"); }
+                else if (mode == 3) { initGas(); Serial.println("Mode: Blue Gas Discharge"); }
+                else { Serial.println("Mode: Gradient"); }
+            }
+        } else if (ev == RotaryEncoder::LONG_PRESS) {
+            colorAdjustMode = true;
+            colorLocked = false;
+            rotary.setValue(hueOffset / 2);
+            Serial.println("Entered Color Adjust Mode (long press)");
+            Serial.println("переход в режим выбора цвета");
+        }
+    }
+} mainRotaryListener;
+
 void setup() {
-    pinMode(ROTARY_CLK,INPUT_PULLUP);
-    pinMode(ROTARY_DT,INPUT_PULLUP);
-    pinMode(ROTARY_SW,INPUT_PULLUP);
 	Serial.begin(115200);
 	while (!Serial) { delay(10); }
 	Serial.println("LedMatrix test (encoder). Rotate to change, press to cycle modes (Gradient, Stars, Lamp, Gas).");
 
 	matrix.init();
 
-	// Rotary init
-	rotary.begin();
-	rotary.setup(readEncoderISR);
+	// Rotary init (pins инициализируются внутри rotary.init())
+	rotary.init();
+	rotary.setSteps(ROTARY_STEPS); // установка шага через метод
 	rotary.setBoundaries(0, 127, false); // 0..127 steps (будет маппиться в 0..255), без wrap
-	rotary.setAcceleration(1);
 	currentBrightness = 16;
-	rotary.setEncoderValue(currentBrightness / 2); // стартовое значение под новую шкалу
+	rotary.setValue(currentBrightness / 2); // стартовое значение под новую шкалу
 	matrix.setMasterBrightness(currentBrightness);
+	rotary.attachListener(&mainRotaryListener);
 
 	// init stars & lamp buffer (not active until toggled)
 	initStars();
@@ -107,82 +126,8 @@ void setup() {
 }
 
 void loop() {
-	// Encoder control: яркость или цвет в зависимости от режима
-	if (rotary.encoderChanged()) {
-		int val = rotary.readEncoder();
-		int mapped = constrain(val * 2, 0, 255);
-		if (colorAdjustMode) {
-			hueOffset = (uint8_t)mapped;
-			hueOffsetFloat = (float)hueOffset;
-			Serial.print("Hue: "); Serial.println(hueOffset);
-		} else {
-			currentBrightness = (uint8_t)mapped; // двойной шаг: шаг энкодера -> яркость*2
-			matrix.setMasterBrightness(currentBrightness);
-			Serial.print("Brightness: "); Serial.println(currentBrightness);
-		}
-	}
-
-	// Обработка кнопки с антидребезгом
-	int swRaw = digitalRead(ROTARY_SW);
-	if (swRaw != lastSwRaw) {
-		lastDebounceTime = millis();
-		lastSwRaw = swRaw;
-	}
-	// если состояние стабильно в течение debounceMs — обновляем debounced состояние и обрабатываем фронты
-	if ((millis() - lastDebounceTime) > debounceMs) {
-		if (swStateDebounced != swRaw) {
-			swStateDebounced = swRaw;
-			// нажатие (переход в LOW)
-			if (swStateDebounced == LOW && !btnDown) {
-				btnDown = true;
-				btnPressedTime = millis();
-				longPressHandled = false;
-			}
-			// отпускание (переход в HIGH)
-			else if (swStateDebounced == HIGH && btnDown) {
-				unsigned long dur = millis() - btnPressedTime;
-				btnDown = false;
-				if (longPressHandled) {
-					Serial.println("Long press released");
-					Serial.println("переход в режим выбора цвета (release)");
-				} else if (dur >= longPressMs) {
-					// запасной вариант: длинное удержание обнаружено при отпускании
-					colorAdjustMode = true;
-					colorLocked = false;
-					rotary.setEncoderValue(hueOffset / 2);
-					Serial.println("Entered Color Adjust Mode (long press on release)");
-					Serial.println("переход в режим выбора цвета");
-				} else {
-					// короткое нажатие
-					if (colorAdjustMode) {
-						colorAdjustMode = false;
-						colorLocked = true;
-						rotary.setEncoderValue(currentBrightness / 2);
-						Serial.println("Exited Color Adjust Mode -> Selection Mode");
-					} else {
-						mode = (mode + 1) % 4;
-						if (mode == 1) { initStars(); Serial.println("Mode: Stars"); }
-						else if (mode == 2) { initLamp(); Serial.println("Mode: Lamp ignition"); }
-						else if (mode == 3) { initGas(); Serial.println("Mode: Blue Gas Discharge"); }
-						else { Serial.println("Mode: Gradient"); }
-					}
-				}
-			}
-		}
-	}
-
-	// Проверяем долгий клик во время удержания (вход в режим сразу при достижении порога)
-	if (btnDown && !longPressHandled) {
-		unsigned long held = millis() - btnPressedTime;
-		if (held >= longPressMs) {
-			longPressHandled = true;
-			colorAdjustMode = true;
-			colorLocked = false;
-			rotary.setEncoderValue(hueOffset / 2);
-			Serial.println("Entered Color Adjust Mode (long press)");
-			Serial.println("переход в режим выбора цвета");
-		}
-	}
+    // process rotary (поллинг и уведомления)
+    rotary.update();
 
 	// Animation timing
 	if (millis() - lastMillis < refreshMs) return;
