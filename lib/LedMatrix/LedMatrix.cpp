@@ -24,7 +24,7 @@ void LedMatrix::update() {
 
 
 void LedMatrix::setPixelHSV(int x, int y, uint8_t h, uint8_t s, uint8_t v) {
-    if (x < 0 || x >= width || y < 0 || y >= height) {
+    if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
         return;
     }
     int index = XY(x, y);
@@ -65,13 +65,13 @@ void LedMatrix::setMasterBrightness(uint8_t b) {
 int LedMatrix::XY(int x, int y) {
     // Преобразование координат (x, y) в индекс массива
     // Серпантиновый маппинг: чётные строки слева->справа, нечётные справа->слева
-    if (x < 0 || x >= width || y < 0 || y >= height) {
+    if (x < 0 || x >= m_width || y < 0 || y >= m_height) {
         return -1; // безопасный возврат при некорректных координатах
     }
     if (y % 2 == 0) { // 0,2,4... — слева направо
-        return y * width + x;
+        return y * m_width + x;
     } else { // 1,3,5... — справа налево
-        return y * width + (width - 1 - x);
+        return y * m_width + (m_width - 1 - x);
     }
 }
 

@@ -13,10 +13,10 @@ class LedMatrix {
 private:
     CRGB leds[NUM_LEDS];
     CRGB baseLeds[NUM_LEDS]; // буфер оригинальных (незашкалированных) цветов
-    int width = MATRIX_WIDTH;
-    int height = MATRIX_HEIGHT;
+    int m_width = MATRIX_WIDTH;
+    int m_height = MATRIX_HEIGHT;
     uint8_t masterBrightness = DEF_BRIGHTNESS; // Мастер яркость (глобальная)
-    int XY(int x, int y); 
+    int XY(int x, int y);
 public:
 
     LedMatrix();
@@ -24,8 +24,13 @@ public:
     void clear();
     void update();
     void powerOff();
-    int getWidth() const{ return width; };
-    int getHeight() const{ return height; };
+    int getWidth() const{ return m_width; };
+    int getHeight() const{ return m_height; };
+    // Compatibility convenience accessors used by animations
+    int width() const { return getWidth(); }
+    int height() const { return getHeight(); }
+    // compatibility: some animations call show()
+    void show() { update(); }
     int getNumLeds() const{ return NUM_LEDS; };
     void setMasterBrightness(uint8_t b);
     void setPixelHSV(int x, int y, uint8_t h, uint8_t s, uint8_t v);

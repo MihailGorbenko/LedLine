@@ -9,7 +9,7 @@
 
 class RotaryEncoder {
 public:
-    enum Event { PRESS, LONG_PRESS, INCREMENT, DECREMENT };
+    enum Event { PRESS_START, PRESS_END, INCREMENT, DECREMENT };
 
     // Интерфейс подписчика
     class IEncoderListener {
@@ -22,9 +22,9 @@ public:
     void update();         
     void attachListener(IEncoderListener* l);
     void detachListener(IEncoderListener* l);
+    void setSteps(int steps);
     void setValue(int v);
     void setBoundaries(int minV, int maxV, bool wrap);
-    void setSteps(int steps);
 
 private:
     uint8_t _clkPin, _dtPin, _swPin;
@@ -41,10 +41,8 @@ private:
     unsigned long _lastSwMillis;
     int _swState;
     bool _btnDown;
-    unsigned long _btnPressedMillis;
 
     const unsigned long DEBOUNCE_MS = 50;
-    const unsigned long LONGPRESS_MS = 1000;
 
     void notify(Event ev, int value);
 };

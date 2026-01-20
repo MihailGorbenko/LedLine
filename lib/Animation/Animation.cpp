@@ -39,6 +39,8 @@ bool AnimationBase::loadFromNVS(const char* key) {
 		hue = defaultHue;
 		sat = defaultSat;
 		val = defaultVal;
+		// apply defaults through setter so subclasses see them
+		setColorHSV(hue, sat, val);
 		return false;
 	}
 	String kh = String(key) + "_h";
@@ -51,6 +53,8 @@ bool AnimationBase::loadFromNVS(const char* key) {
 	hue = (uint8_t)h;
 	sat = (uint8_t)s;
 	val = (uint8_t)v;
+	// ensure subclass/application sees the color via setter
+	setColorHSV((uint8_t)h, (uint8_t)s, (uint8_t)v);
 	Serial.print("Animation: loadFromNVS - loaded h="); Serial.print(hue);
 	Serial.print(" s="); Serial.print(sat);
 	Serial.print(" v="); Serial.println(val);

@@ -27,12 +27,8 @@ public:
 	}
 
 
-	uint8_t getHue() const { return hue; }
-	uint8_t getSat() const { return sat; }
-	uint8_t getVal() const { return val; }
-
 	// наследники реализуют логику анимации в update()
-	virtual void update() = 0;
+	virtual void render() = 0;
 
 	// соответствие интерфейсу IPersistant: loadFromNVS
 	bool saveToNVS(const char* key) override;
