@@ -11,7 +11,7 @@
 #define PLASMA_DEFAULT_SAT 255
 #endif
 #ifndef PLASMA_DEFAULT_VAL
-#define PLASMA_DEFAULT_VAL 64
+#define PLASMA_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class PlasmaAnimation : public AnimationBase {

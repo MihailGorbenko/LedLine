@@ -4,6 +4,11 @@
 #include "../Persistant/Persistant.hpp"
 #include "../LedMatrix/LedMatrix.hpp"
 
+// Master default value for all animations (master brightness controls final brightness)
+#ifndef ANIMATION_DEFAULT_VAL
+#define ANIMATION_DEFAULT_VAL 255
+#endif
+
 class AnimationBase : public IPersistant {
 protected:
 	LedMatrix* matrix;
@@ -26,6 +31,8 @@ public:
 		hue = h; sat = s; val = v;
 	}
 
+	// вызывается контроллером при активации анимации (переключение/включение)
+	virtual void onActivate() {}
 
 	// наследники реализуют логику анимации в update()
 	virtual void render() = 0;

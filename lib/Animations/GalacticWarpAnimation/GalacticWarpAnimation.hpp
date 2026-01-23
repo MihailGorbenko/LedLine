@@ -11,7 +11,7 @@
 #define GALACTICWARP_DEFAULT_SAT 220
 #endif
 #ifndef GALACTICWARP_DEFAULT_VAL
-#define GALACTICWARP_DEFAULT_VAL 120
+#define GALACTICWARP_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class GalacticWarpAnimation : public AnimationBase {

@@ -1,5 +1,15 @@
 #include "AppController.hpp"
 
+#if DEBUG_SERIAL
+#define DBG_PRINT(x) Serial.print(x)
+#define DBG_PRINTLN(x) Serial.println(x)
+#define DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
+#else
+#define DBG_PRINT(x)
+#define DBG_PRINTLN(x)
+#define DBG_PRINTF(...)
+#endif
+
 AppController::AppController(LedMatrix& m, RotaryEncoder& enc)
 	: matrix(&m),
 	  encoder(&enc),
@@ -12,6 +22,8 @@ AppController::AppController(LedMatrix& m, RotaryEncoder& enc)
 	  btnDown(false),
 	  btnPressedMillis(0),
 	  powerOffAnim(m),
+	  progressAnim(m),
+	  selectOverlayUntilMs(0),
 	  lastFrameMillis(0),
 	  frameIntervalMs(0) {
 	// clamp to avoid 0ms interval on misconfigured APP_FPS
@@ -26,6 +38,7 @@ void AppController::addAnimation(AnimationBase* a) {
 }
 
 void AppController::begin() {
+	DBG_PRINTLN("[AppController] Initializing...");
 	encoder->attachListener(this);
 	encoder->init();
 
@@ -36,6 +49,7 @@ void AppController::begin() {
 
 	loadState();
 	applyMasterBrightness();
+	DBG_PRINTF("[AppController] Loaded animation index: %d, brightness: %d\n", currentIndex, brightStep);
 
 	// sync encoder to current mode/value so acceleration affects controller logic
 	if (!animations.empty()) {
@@ -52,7 +66,10 @@ void AppController::begin() {
 		char key[32];
 		snprintf(key, sizeof(key), "anim_%d", currentIndex);
 		animations[currentIndex]->loadFromNVS(key);
+		// notify animation that it's now active (for warmups, etc.)
+		animations[currentIndex]->onActivate();
 	}
+	DBG_PRINTLN("[AppController] Initialization complete");
 }
 
 void AppController::update() {
@@ -77,19 +94,22 @@ void AppController::update() {
 			}
 			powered = false;
 			mode = MODE_POWEROFF;
-			saveState();
-			// clear matrix completely after power-off sequence
+			saveState();		DBG_PRINTLN("[AppController] POWERED OFF - state saved to NVS");			// clear matrix completely after power-off sequence
 			matrix->clear();
 			matrix->show();
 		} else {
-			int prog = 255 - (int)((uint32_t)held * 255 / APP_POWEROFF_HOLD_MS);
-			if (prog < 0) prog = 0;
-			powerOffAnim.setProgress((uint8_t)prog);
+			// only show power-off animation after a minimal hold threshold
+			if (held >= APP_POWEROFF_MIN_ANIM_MS) {
+				int prog = 255 - (int)((uint32_t)held * 255 / APP_POWEROFF_HOLD_MS);
+				if (prog < 0) prog = 0;
+				powerOffAnim.setProgress((uint8_t)prog);
 
-			// ensure it's visible while holding
-			matrix->clear();
-			powerOffAnim.render();
-			matrix->show();
+				// ensure it's visible while holding
+				matrix->clear();
+				powerOffAnim.render();
+				matrix->show();
+			}
+			// otherwise ignore short presses (no flash)
 		}
 		return; // while holding, ignore other rendering
 	}
@@ -110,9 +130,23 @@ void AppController::update() {
 	if (elapsed < frameIntervalMs) return;
 	lastFrameMillis = now;
 
-	// bounds-checked animation render
-	if (currentIndex >= 0 && currentIndex < (int)animations.size()) {
-		animations[currentIndex]->render();
+	// Render selection overlay briefly, then preview animation; otherwise render selected animation
+	if (mode == MODE_SELECT_ANIM) {
+		if ((long)(now - selectOverlayUntilMs) < 0) {
+			uint8_t total = (uint8_t)max(1, (int)animations.size());
+			uint8_t ci = (uint8_t)constrain(currentIndex, 0, (int)total - 1);
+			progressAnim.setSegments(total, ci);
+			progressAnim.render();
+		} else {
+			if (currentIndex >= 0 && currentIndex < (int)animations.size()) {
+				animations[currentIndex]->render();
+			}
+		}
+	} else {
+		// bounds-checked animation render
+		if (currentIndex >= 0 && currentIndex < (int)animations.size()) {
+			animations[currentIndex]->render();
+		}
 	}
 }
 
@@ -139,12 +173,15 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 				}
 				applyMasterBrightness();
 				mode = MODE_SELECT_ANIM;
+				DBG_PRINTLN("[AppController] POWERED ON - state restored from NVS");
 
 				// restore current animation settings (if any)
 				if (!animations.empty() && currentIndex >= 0 && currentIndex < (int)animations.size()) {
 					char key[32];
 					snprintf(key, sizeof(key), "anim_%d", currentIndex);
 					animations[currentIndex]->loadFromNVS(key);
+					// notify animation that it's now active (for warmups, etc.)
+					animations[currentIndex]->onActivate();
 				}
 
 				// sync encoder after power-on
@@ -169,12 +206,16 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 				animations[currentIndex]->saveToNVS(key);
 			}
 			mode = MODE_SELECT_ANIM;
+			DBG_PRINTLN("[AppController] Mode: SELECT_ANIM (color saved)");
 		} else if (mode == MODE_SELECT_ANIM) {
 			mode = MODE_BRIGHTNESS;
+			DBG_PRINTLN("[AppController] Mode: BRIGHTNESS");
 		} else if (mode == MODE_BRIGHTNESS) {
 			mode = MODE_COLOR;
+			DBG_PRINTLN("[AppController] Mode: COLOR");
 		} else {
 			mode = MODE_SELECT_ANIM;
+			DBG_PRINTLN("[AppController] Mode: SELECT_ANIM");
 		}
 
 		// sync encoder to new mode/value (so accel affects correct parameter)
@@ -183,6 +224,9 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 				if (!animations.empty()) {
 					encoder->setBoundaries(0, (int)animations.size() - 1, true);
 					encoder->setValue(currentIndex);
+					// when entering selection mode, show overlay briefly (>= one frame)
+					unsigned long overlayMs = max((unsigned long)APP_SELECT_OVERLAY_MS, frameIntervalMs);
+					selectOverlayUntilMs = millis() + overlayMs;
 				}
 				break;
 			case MODE_BRIGHTNESS:
@@ -214,15 +258,23 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 					matrix->show();
 
 					currentIndex = newIndex;
+					DBG_PRINTF("[AppController] Animation changed to: %d\n", currentIndex);
 					char key[32];
 					snprintf(key, sizeof(key), "anim_%d", currentIndex);
 					animations[currentIndex]->loadFromNVS(key);
+					// notify animation that it's now active (for warmups, etc.)
+					animations[currentIndex]->onActivate();
+					// show progress overlay briefly (ensure at least one frame)
+					unsigned long overlayMs = max((unsigned long)APP_SELECT_OVERLAY_MS, frameIntervalMs);
+					selectOverlayUntilMs = millis() + overlayMs;
 				}
 				break;
 
 			case MODE_BRIGHTNESS:
 				brightStep = constrain(value, 0, APP_STEPS - 1);
 				applyMasterBrightness();
+				saveState();
+				DBG_PRINTF("[AppController] Brightness: %d/%d\n", brightStep, APP_STEPS);
 				break;
 
 			case MODE_COLOR:
@@ -233,6 +285,7 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 					int delta = (colorStep * 256) / APP_STEPS;
 					if (delta > 255) delta = 255;  // clamp to valid hue range
 					animations[currentIndex]->setColorHSV((uint8_t)delta, 255, 255);
+					DBG_PRINTF("[AppController] Color (Hue): %d (%d/%d)\n", delta, colorStep, APP_STEPS);
 				}
 				break;
 
@@ -244,10 +297,14 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 
 bool AppController::saveState() {
 	Preferences prefs;
-	if (!prefs.begin("app", false)) return false;
+	if (!prefs.begin("app", false)) {
+		DBG_PRINTLN("[NVS] Error: Failed to begin NVS write");
+		return false;
+	}
 	prefs.putUInt("lastAnim", (uint32_t)currentIndex);
 	prefs.putUShort("brightStep", (uint16_t)brightStep);
 	prefs.end();
+	DBG_PRINTF("[NVS] State saved: anim=%d, brightness=%d\n", currentIndex, brightStep);
 	return true;
 }
 
@@ -256,6 +313,7 @@ bool AppController::loadState() {
 	if (!prefs.begin("app", true)) {
 		currentIndex = 0;
 		brightStep = APP_STEPS/2;
+		DBG_PRINTLN("[NVS] Warning: Could not read state (using defaults)");
 		return false;
 	}
 	uint32_t ai = prefs.getUInt("lastAnim", 0);
@@ -266,12 +324,19 @@ bool AppController::loadState() {
 	if (currentIndex < 0) currentIndex = 0;
 	if (brightStep < 0) brightStep = 0;
 	if (brightStep >= APP_STEPS) brightStep = APP_STEPS - 1;
+	DBG_PRINTF("[NVS] State loaded: anim=%d, brightness=%d\n", currentIndex, brightStep);
 	return true;
 }
 
 void AppController::applyMasterBrightness() {
 	int bs = constrain(brightStep, 0, APP_STEPS - 1);
-	unsigned long v = (unsigned long)map(bs, 0, APP_STEPS - 1, 16, 255);
+	// Linear interpolation: ensure max brightness (255) at max step
+	unsigned long v;
+	if (bs == APP_STEPS - 1) {
+		v = 255;
+	} else {
+		v = 5 + (unsigned long)bs * 250 / (APP_STEPS - 1);
+	}
 	if (v > 255) v = 255;  // ensure no overflow
 	matrix->setMasterBrightness((uint8_t)v);
 }

@@ -11,7 +11,7 @@
 #define SCANNER_DEFAULT_SAT 255
 #endif
 #ifndef SCANNER_DEFAULT_VAL
-#define SCANNER_DEFAULT_VAL 96
+#define SCANNER_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class ScannerAnimation : public AnimationBase {

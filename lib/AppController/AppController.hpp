@@ -6,6 +6,12 @@
 #include "../LedMatrix/LedMatrix.hpp"
 #include "../Animation/Animation.hpp"
 #include "../Animations/PowerOffAnimation/PowerOffAnimation.hpp"
+#include "../Animations/ProgressAnimation/ProgressAnimation.hpp"
+
+// DEBUG MODE - enable serial output for hardware testing
+#ifndef DEBUG_SERIAL
+#define DEBUG_SERIAL 1
+#endif
 
 // настройка FPS для обновления анимации (можно переопределить в проекте)
 #ifndef APP_FPS
@@ -18,6 +24,16 @@
 // длительность удержания для выключения (мс)
 #ifndef APP_POWEROFF_HOLD_MS
 #define APP_POWEROFF_HOLD_MS 2000
+#endif
+
+// минимальное время (мс) удержания перед показом анимации выключения
+#ifndef APP_POWEROFF_MIN_ANIM_MS
+#define APP_POWEROFF_MIN_ANIM_MS 500
+#endif
+
+// minimal time to show selection progress overlay (ms)
+#ifndef APP_SELECT_OVERLAY_MS
+#define APP_SELECT_OVERLAY_MS 1000
 #endif
 
 class AppController : public RotaryEncoder::IEncoderListener {
@@ -62,6 +78,10 @@ private:
 	bool btnDown;
 	unsigned long btnPressedMillis;
 	PowerOffAnimation powerOffAnim;
+	ProgressAnimation progressAnim;
+
+	// selection overlay timing: show progress segment briefly, then preview animation
+	unsigned long selectOverlayUntilMs;
 
 	// fps control
 	unsigned long lastFrameMillis;

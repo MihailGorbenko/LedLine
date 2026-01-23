@@ -11,7 +11,7 @@
 #define PULSEWAVE_DEFAULT_SAT 255
 #endif
 #ifndef PULSEWAVE_DEFAULT_VAL
-#define PULSEWAVE_DEFAULT_VAL 80
+#define PULSEWAVE_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class PulseWaveAnimation : public AnimationBase {

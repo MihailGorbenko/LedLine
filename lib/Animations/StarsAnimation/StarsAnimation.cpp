@@ -12,11 +12,23 @@ StarsAnimation::StarsAnimation(LedMatrix& m)
 	if (w <= 0) w = 8;
 	if (h <= 0) h = 8;
 	int total_pixels = w * h;
-	int autoCount = max(1, total_pixels / 5); // ~20%
-	starCount = min(STARS_STAR_COUNT, autoCount);
+	int autoCount = max(1, total_pixels / 5); // ~20% пикселей
+	starCount = autoCount; // делаем реже, чтобы повысить контраст
 
 	stars.reserve(starCount);
-	for (int i = 0; i < starCount; ++i) {
+	// Обеспечим покрытие ширины равномерно распределёнными X для части звёзд
+	int base = min(w, starCount);
+	for (int i = 0; i < base; ++i) {
+		Star s;
+		s.x = (uint8_t)((long)i * w / base);
+		s.y = (uint8_t)random(0, h);
+		s.brightness = (uint8_t)random(0, 256);
+		s.target = (uint8_t)random(0, 256);
+		s.nextChangeMillis = millis() + (unsigned long)random(100, 1500);
+		stars.push_back(s);
+	}
+	// Остальные — случайно по всей матрице
+	for (int i = base; i < starCount; ++i) {
 		Star s;
 		randomizeStar(s);
 		stars.push_back(s);
@@ -73,7 +85,10 @@ void StarsAnimation::render() {
 			s.brightness = s.brightness - delta;
 		}
 
-		uint8_t drawV = (uint32_t(s.brightness) * uint32_t(val)) / 255;
+		// Повышаем контраст: нелинейно усиливаем яркие пики и гасим слабые
+		uint8_t shaped = scale8(s.brightness, s.brightness); // ~ b^2 / 255
+		uint8_t drawV = scale8(val, shaped);
+		if (drawV < 24) continue; // отсечём слабое свечение
 		matrix->setPixelHSV(s.x, s.y, hue, sat, drawV);
 	}
 

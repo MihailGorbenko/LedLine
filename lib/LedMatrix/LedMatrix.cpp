@@ -39,6 +39,7 @@ void LedMatrix::setPixelHSV(int x, int y, uint8_t h, uint8_t s, uint8_t v) {
     leds[index] = out;
 }
 
+
 void LedMatrix::powerOff() {
     clear();
     update();

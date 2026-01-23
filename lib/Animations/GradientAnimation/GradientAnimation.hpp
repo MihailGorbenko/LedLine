@@ -13,7 +13,7 @@
 #define GRADIENT_DEFAULT_SAT 255
 #endif
 #ifndef GRADIENT_DEFAULT_VAL
-#define GRADIENT_DEFAULT_VAL 16
+#define GRADIENT_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 // размеры матрицы теперь получаются у LedMatrix через matrix->width()/height()
 

@@ -34,6 +34,7 @@ public:
     int getNumLeds() const{ return NUM_LEDS; };
     void setMasterBrightness(uint8_t b);
     void setPixelHSV(int x, int y, uint8_t h, uint8_t s, uint8_t v);
+
 };
 
 #endif // LED_MATRIX_HPP

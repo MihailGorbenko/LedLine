@@ -12,7 +12,7 @@
 #define RAINBOWCHASE_DEFAULT_SAT 255
 #endif
 #ifndef RAINBOWCHASE_DEFAULT_VAL
-#define RAINBOWCHASE_DEFAULT_VAL 64
+#define RAINBOWCHASE_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class RainbowChaseAnimation : public AnimationBase {

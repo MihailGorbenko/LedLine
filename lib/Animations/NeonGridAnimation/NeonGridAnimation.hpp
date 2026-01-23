@@ -11,7 +11,7 @@
 #define NEONGRID_DEFAULT_SAT 255
 #endif
 #ifndef NEONGRID_DEFAULT_VAL
-#define NEONGRID_DEFAULT_VAL 100
+#define NEONGRID_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class NeonGridAnimation : public AnimationBase {

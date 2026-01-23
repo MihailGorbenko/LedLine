@@ -1,9 +1,15 @@
 #include "Animation.hpp"
 #include <Preferences.h>
 
-// 0 = no Serial spam (recommended for production)
+// Debug mode for NVS operations
 #ifndef ANIM_NVS_DEBUG
-#define ANIM_NVS_DEBUG 0
+#define ANIM_NVS_DEBUG 1
+#endif
+
+#if ANIM_NVS_DEBUG
+#define ANIM_DBG_PRINTF(...) Serial.printf(__VA_ARGS__)
+#else
+#define ANIM_DBG_PRINTF(...)
 #endif
 
 static void makeKey(char* out, size_t outSize, const char* key, const char* suffix) {
@@ -18,74 +24,54 @@ static void makeKey(char* out, size_t outSize, const char* key, const char* suff
 
 bool AnimationBase::saveToNVS(const char* key) {
 	if (!key) {
-#if ANIM_NVS_DEBUG
-		Serial.println("Animation: saveToNVS - null key");
-#endif
+		ANIM_DBG_PRINTF("[NVS-Anim] Error: Null key in saveToNVS\n");
 		return false;
 	}
 
 	Preferences prefs;
 	if (!prefs.begin("anim", false)) {
-#if ANIM_NVS_DEBUG
-		Serial.println("Animation: saveToNVS - prefs.begin failed");
-#endif
+		ANIM_DBG_PRINTF("[NVS-Anim] Error: Cannot begin write (key=%s)\n", key);
 		return false;
 	}
 
-	char kh[32], ks[32], kv[32];
+	char kh[32], ks[32];
 	makeKey(kh, sizeof(kh), key, "_h");
 	makeKey(ks, sizeof(ks), key, "_s");
-	makeKey(kv, sizeof(kv), key, "_v");
 
 	bool ok = true;
 	ok &= (prefs.putUChar(kh, hue) != 0);
 	ok &= (prefs.putUChar(ks, sat) != 0);
-	ok &= (prefs.putUChar(kv, val) != 0);
 	prefs.end();
 
-#if ANIM_NVS_DEBUG
-	Serial.print("Animation: saveToNVS ");
-	Serial.print(key);
-	Serial.print(" h="); Serial.print(hue);
-	Serial.print(" s="); Serial.print(sat);
-	Serial.print(" v="); Serial.println(val);
-#endif
+	ANIM_DBG_PRINTF("[NVS-Anim] Saved (key=%s): H=%d S=%d (V ignored; global via masterBrightness)\n", key, hue, sat);
 	return ok;
 }
 
 bool AnimationBase::loadFromNVS(const char* key) {
 	if (!key) {
-#if ANIM_NVS_DEBUG
-		Serial.println("Animation: loadFromNVS - null key");
-#endif
+		ANIM_DBG_PRINTF("[NVS-Anim] Error: Null key in loadFromNVS\n");
 		return false;
 	}
 
 	Preferences prefs;
 	if (!prefs.begin("anim", true)) {
 		// apply defaults through setter so subclasses see them
-		setColorHSV(defaultHue, defaultSat, defaultVal);
+		setColorHSV(defaultHue, defaultSat, ANIMATION_DEFAULT_VAL);
+		ANIM_DBG_PRINTF("[NVS-Anim] Warning: Cannot read (key=%s), using defaults\n", key);
 		return false;
 	}
 
-	char kh[32], ks[32], kv[32];
+	char kh[32], ks[32];
 	makeKey(kh, sizeof(kh), key, "_h");
 	makeKey(ks, sizeof(ks), key, "_s");
-	makeKey(kv, sizeof(kv), key, "_v");
 
 	uint8_t h = prefs.getUChar(kh, defaultHue);
 	uint8_t s = prefs.getUChar(ks, defaultSat);
-	uint8_t v = prefs.getUChar(kv, defaultVal);
 	prefs.end();
 
-	setColorHSV(h, s, v);
+	// Force V to global default (255) so brightness is controlled only by masterBrightness
+	setColorHSV(h, s, ANIMATION_DEFAULT_VAL);
 
-#if ANIM_NVS_DEBUG
-	Serial.print("Animation: loadFromNVS ");
-	Serial.print(key);
-	Serial.print(" h="); Serial.print(h);
-	Serial.print(" s="); Serial.print(s);
-	Serial.print(" v="); Serial.println(v);
-#endif
+	ANIM_DBG_PRINTF("[NVS-Anim] Loaded (key=%s): H=%d S=%d (V forced to 255)\n", key, h, s);
 	return true;
 }

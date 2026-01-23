@@ -3,7 +3,7 @@
 
 ScannerAnimation::ScannerAnimation(LedMatrix& m)
 	: AnimationBase(m, SCANNER_DEFAULT_HUE, SCANNER_DEFAULT_SAT, SCANNER_DEFAULT_VAL),
-	  tail(200) {
+	  tail(255) {
 }
 
 void ScannerAnimation::setColorHSV(uint8_t h, uint8_t s, uint8_t v) {

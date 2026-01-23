@@ -29,7 +29,8 @@ void PlasmaAnimation::render() {
 
 			// Hue slowly drifts, value is modulated by plasma field
 			uint8_t hOut = (uint8_t)(hue + (t >> 3) + (p >> 2));
-			uint8_t vOut = scale8(val, qadd8(64, (p >> 1))); // keep some floor brightness
+			// allow full brightness at peaks; keep small floor of 16
+			uint8_t vOut = scale8(val, qadd8(16, p));
 			matrix->setPixelHSV(x, y, hOut, sat, vOut);
 		}
 	}

@@ -11,7 +11,7 @@
 #define SPARKLEWAVE_DEFAULT_SAT 255
 #endif
 #ifndef SPARKLEWAVE_DEFAULT_VAL
-#define SPARKLEWAVE_DEFAULT_VAL 64
+#define SPARKLEWAVE_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class SparkleWaveAnimation : public AnimationBase {

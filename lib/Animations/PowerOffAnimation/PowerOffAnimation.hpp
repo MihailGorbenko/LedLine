@@ -12,7 +12,7 @@
 #define POWEROFF_DEFAULT_SAT 255
 #endif
 #ifndef POWEROFF_DEFAULT_VAL
-#define POWEROFF_DEFAULT_VAL 64
+#define POWEROFF_DEFAULT_VAL 255
 #endif
 
 class PowerOffAnimation {

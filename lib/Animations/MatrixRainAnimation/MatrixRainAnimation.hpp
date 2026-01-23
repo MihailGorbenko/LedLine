@@ -11,7 +11,7 @@
 #define MATRIXRAIN_DEFAULT_SAT 255
 #endif
 #ifndef MATRIXRAIN_DEFAULT_VAL
-#define MATRIXRAIN_DEFAULT_VAL 128
+#define MATRIXRAIN_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
 class MatrixRainAnimation : public AnimationBase {

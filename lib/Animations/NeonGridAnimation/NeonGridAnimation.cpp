@@ -24,7 +24,7 @@ void NeonGridAnimation::render() {
 
 	// Horizontal grid lines (constant)
 	for (int x = 0; x < w; ++x) {
-		uint8_t baseIntensity = 100;
+		uint8_t baseIntensity = 255; // allow full brightness
 		for (int y = 0; y < hgt; ++y) {
 			uint8_t vOut = scale8(val, baseIntensity);
 			uint8_t hOut = (uint8_t)(hue + (y * 64));  // hue per row
@@ -39,7 +39,7 @@ void NeonGridAnimation::render() {
 
 		for (int y = 0; y < hgt; ++y) {
 			uint8_t hOut = (uint8_t)(hue + intensity / 2);
-			uint8_t vOut = qadd8(scale8(val, 100), scale8(val, scale8(pulseWave, 150)));
+			uint8_t vOut = qadd8(scale8(val, 255), scale8(val, scale8(pulseWave, 255)));
 			vOut = min(vOut, val);
 			matrix->setPixelHSV(x, y, hOut, sat, vOut);
 		}

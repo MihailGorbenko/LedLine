@@ -23,7 +23,8 @@ void SparkleWaveAnimation::render() {
 	uint16_t t = (uint16_t)(millis() / 5);
 	for (int x = 0; x < w; ++x) {
 		uint8_t wave = sin8((uint8_t)(t + x * 10));
-		uint8_t vWave = scale8(val, qadd8(32, (wave >> 1)));
+		// allow full brightness at wave peaks
+		uint8_t vWave = scale8(val, qadd8(0, wave));
 		uint8_t hOut = (uint8_t)(hue + (wave >> 2));
 
 		for (int y = 0; y < hgt; ++y) {
