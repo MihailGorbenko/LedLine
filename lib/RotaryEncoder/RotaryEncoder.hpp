@@ -27,7 +27,13 @@ public:
     void setBoundaries(int minV, int maxV, bool wrap);
 
     // added: configure acceleration/velocity behaviour
-    void setAccelParams(unsigned long med_ms, unsigned long fast_ms, int med_mult, int fast_mult, float filterAlpha = 0.3f);
+    void setAccelParams(unsigned long med_ms, unsigned long fast_ms, int med_mult, int fast_mult = 3, float filterAlpha = 0.3f);
+
+    // added: runtime control of acceleration from controller
+    void setAccelMultipliers(int med_mult, int fast_mult);
+    void setAccelThresholds(unsigned long med_ms, unsigned long fast_ms);
+    void setAccelEnabled(bool enabled);
+    float getVelocity() const;
 
 private:
     uint8_t _clkPin, _dtPin, _swPin;
@@ -40,7 +46,6 @@ private:
     IEncoderListener* _listeners[MAX_LISTENERS];
     int _listenerCount;
 
-    int _lastClk;
     unsigned long _lastSwMillis;
     int _swState;
     bool _btnDown;
@@ -62,6 +67,11 @@ private:
     unsigned long _accelFastMs;  // threshold for fast accel (ms)
     int _accelMedMult;           // medium multiplier
     int _accelFastMult;          // fast multiplier
+
+    bool _accelEnabled;         // enable/disable accel behaviour
+
+    // safety: max full steps to process in one update (prevents huge jumps)
+    static const int MAX_FULL_STEPS_PER_UPDATE = 16;
 };
 
 #endif // ROTARY_ENCODER_HPP

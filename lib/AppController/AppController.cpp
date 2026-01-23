@@ -6,13 +6,18 @@ AppController::AppController(LedMatrix& m, RotaryEncoder& enc)
 	  currentIndex(0),
 	  mode(MODE_SELECT_ANIM),
 	  powered(true),
+	  powered_off_shown(false),
 	  brightStep(APP_STEPS/2),
 	  colorStep(0),
 	  btnDown(false),
 	  btnPressedMillis(0),
 	  powerOffAnim(m),
 	  lastFrameMillis(0),
-	  frameIntervalMs(1000 / APP_FPS) {
+	  frameIntervalMs(0) {
+	// clamp to avoid 0ms interval on misconfigured APP_FPS
+	unsigned long interval = (APP_FPS > 0) ? (1000UL / (unsigned long)APP_FPS) : 33UL;
+	if (interval == 0) interval = 1;
+	frameIntervalMs = interval;
 }
 
 void AppController::addAnimation(AnimationBase* a) {
@@ -23,8 +28,24 @@ void AppController::addAnimation(AnimationBase* a) {
 void AppController::begin() {
 	encoder->attachListener(this);
 	encoder->init();
+
+	// configure accel from controller (x3 on fast)
+	encoder->setAccelThresholds(100, 40);
+	encoder->setAccelMultipliers(2, 3);
+	encoder->setAccelEnabled(true);
+
 	loadState();
 	applyMasterBrightness();
+
+	// sync encoder to current mode/value so acceleration affects controller logic
+	if (!animations.empty()) {
+		encoder->setBoundaries(0, (int)animations.size() - 1, true);
+		encoder->setValue(currentIndex);
+	} else {
+		encoder->setBoundaries(0, 0, false);
+		encoder->setValue(0);
+	}
+
 	if (!animations.empty()) {
 		if (currentIndex < 0 || currentIndex >= (int)animations.size()) currentIndex = 0;
 		// try load animation-specific settings (optional)
@@ -37,15 +58,17 @@ void AppController::begin() {
 void AppController::update() {
 	unsigned long now = millis();
 
-	// handling power-off hold while button down
 	if (btnDown && powered) {
 		unsigned long held = now - btnPressedMillis;
 		if (held >= APP_POWEROFF_HOLD_MS) {
-			// reached threshold -> power off
+			if (!matrix) return;  // safety check
 			powerOffAnim.setProgress(0);
-			powerOffAnim.render();
+
+			// show final frame, then power off
 			matrix->clear();
+			powerOffAnim.render();
 			matrix->show();
+
 			// save current animation color before powering off
 			if (!animations.empty() && currentIndex >= 0 && currentIndex < (int)animations.size()) {
 				char key[32];
@@ -55,27 +78,42 @@ void AppController::update() {
 			powered = false;
 			mode = MODE_POWEROFF;
 			saveState();
+			// clear matrix completely after power-off sequence
+			matrix->clear();
+			matrix->show();
 		} else {
-			// show decreasing progress
 			int prog = 255 - (int)((uint32_t)held * 255 / APP_POWEROFF_HOLD_MS);
 			if (prog < 0) prog = 0;
 			powerOffAnim.setProgress((uint8_t)prog);
+
+			// ensure it's visible while holding
+			matrix->clear();
 			powerOffAnim.render();
+			matrix->show();
 		}
 		return; // while holding, ignore other rendering
 	}
 
 	if (!powered) {
-		// waiting for short press to turn on (handled in onEvent)
+		// keep matrix cleared while powered off (only once, not every cycle)
+		if (!powered_off_shown && matrix) {
+			matrix->clear();
+			matrix->show();
+			powered_off_shown = true;
+		}
 		return;
 	}
 
 	if (animations.empty()) return;
-	if (now - lastFrameMillis < frameIntervalMs) return;
+	// Safe frame timing: protect against millis() wrap (~49 days on 32-bit)
+	unsigned long elapsed = (unsigned long)(now - lastFrameMillis);
+	if (elapsed < frameIntervalMs) return;
 	lastFrameMillis = now;
 
-	// render current animation
-	animations[currentIndex]->render();
+	// bounds-checked animation render
+	if (currentIndex >= 0 && currentIndex < (int)animations.size()) {
+		animations[currentIndex]->render();
+	}
 }
 
 void AppController::onEvent(RotaryEncoder::Event ev, int value) {
@@ -88,26 +126,42 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 	if (ev == RotaryEncoder::PRESS_END) {
 		unsigned long held = millis() - btnPressedMillis;
 		btnDown = false;
+
 		if (!powered) {
-			// short press -> power on
 			if (held < APP_POWEROFF_HOLD_MS) {
 				powered = true;
+				powered_off_shown = false;  // reset flag for next power-off
 				loadState();
+				if (matrix) {
+					// clear screen before restoring animation
+					matrix->clear();
+					matrix->show();
+				}
 				applyMasterBrightness();
-					mode = MODE_SELECT_ANIM;
-					// restore current animation color (if any)
-					if (!animations.empty() && currentIndex >= 0 && currentIndex < (int)animations.size()) {
-						char key[32];
-						snprintf(key, sizeof(key), "anim_%d", currentIndex);
-						animations[currentIndex]->loadFromNVS(key);
-					}
+				mode = MODE_SELECT_ANIM;
+
+				// restore current animation settings (if any)
+				if (!animations.empty() && currentIndex >= 0 && currentIndex < (int)animations.size()) {
+					char key[32];
+					snprintf(key, sizeof(key), "anim_%d", currentIndex);
+					animations[currentIndex]->loadFromNVS(key);
+				}
+
+				// sync encoder after power-on
+				if (!animations.empty()) {
+					encoder->setBoundaries(0, (int)animations.size() - 1, true);
+					encoder->setValue(currentIndex);
+				} else {
+					encoder->setBoundaries(0, 0, false);
+					encoder->setValue(0);
+				}
 			}
 			return;
 		}
-		if (held >= APP_POWEROFF_HOLD_MS) return; // already handled in update()
+
+		if (held >= APP_POWEROFF_HOLD_MS) return;
 
 		// short press: cycle modes
-		// если выходим из режима выбора цвета — сохранить выбранный цвет для текущей анимации
 		if (mode == MODE_COLOR) {
 			if (!animations.empty() && currentIndex >= 0 && currentIndex < (int)animations.size()) {
 				char key[32];
@@ -122,45 +176,67 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 		} else {
 			mode = MODE_SELECT_ANIM;
 		}
+
+		// sync encoder to new mode/value (so accel affects correct parameter)
+		switch (mode) {
+			case MODE_SELECT_ANIM:
+				if (!animations.empty()) {
+					encoder->setBoundaries(0, (int)animations.size() - 1, true);
+					encoder->setValue(currentIndex);
+				}
+				break;
+			case MODE_BRIGHTNESS:
+				encoder->setBoundaries(0, APP_STEPS - 1, false);
+				encoder->setValue(brightStep);
+				break;
+			case MODE_COLOR:
+				encoder->setBoundaries(0, APP_STEPS - 1, false);
+				encoder->setValue(colorStep);
+				break;
+			case MODE_POWEROFF:
+				break;
+		}
 		return;
 	}
 
-	// rotation
+	// rotation: use encoder 'value' (acceleration now works)
 	if (ev == RotaryEncoder::INCREMENT || ev == RotaryEncoder::DECREMENT) {
-		int dir = (ev == RotaryEncoder::INCREMENT) ? 1 : -1;
 		if (!powered || btnDown) return;
+
 		switch (mode) {
 			case MODE_SELECT_ANIM:
-				if (animations.empty()) return;
+				if (animations.empty() || !matrix || !encoder) return;
 				{
-					// очистить матрицу перед сменой анимации, чтобы не осталось артефактов
+					int newIndex = constrain(value, 0, (int)animations.size() - 1);
+					if (newIndex == currentIndex) return;
+
 					matrix->clear();
 					matrix->show();
 
-					int n = (int)animations.size();
-					currentIndex = (currentIndex + dir) % n;
-					if (currentIndex < 0) currentIndex += n;
-					// try load animation-specific settings (optional)
+					currentIndex = newIndex;
 					char key[32];
 					snprintf(key, sizeof(key), "anim_%d", currentIndex);
 					animations[currentIndex]->loadFromNVS(key);
 				}
-				// try load animation-specific settings (optional)
 				break;
+
 			case MODE_BRIGHTNESS:
-				brightStep = constrain(brightStep + dir, 0, APP_STEPS - 1);
+				brightStep = constrain(value, 0, APP_STEPS - 1);
 				applyMasterBrightness();
 				break;
+
 			case MODE_COLOR:
-				colorStep = constrain(colorStep + dir, 0, APP_STEPS - 1);
-				// interpret colorStep as hue offset and set on current animation
-				if (!animations.empty()) {
+				colorStep = constrain(value, 0, APP_STEPS - 1);
+				if (!matrix || animations.empty()) break;
+				if (currentIndex < 0 || currentIndex >= (int)animations.size()) break;
+				{
 					int delta = (colorStep * 256) / APP_STEPS;
+					if (delta > 255) delta = 255;  // clamp to valid hue range
 					animations[currentIndex]->setColorHSV((uint8_t)delta, 255, 255);
 				}
 				break;
+
 			case MODE_POWEROFF:
-				// ignore rotations
 				break;
 		}
 	}
@@ -194,7 +270,8 @@ bool AppController::loadState() {
 }
 
 void AppController::applyMasterBrightness() {
-	int v = map(brightStep, 0, APP_STEPS - 1, 16, 255);
-	// prefer LedMatrix::setMasterBrightness if exists
+	int bs = constrain(brightStep, 0, APP_STEPS - 1);
+	unsigned long v = (unsigned long)map(bs, 0, APP_STEPS - 1, 16, 255);
+	if (v > 255) v = 255;  // ensure no overflow
 	matrix->setMasterBrightness((uint8_t)v);
 }

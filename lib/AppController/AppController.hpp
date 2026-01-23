@@ -51,6 +51,7 @@ private:
 	// режимы/состояние
 	Mode mode;
 	bool powered;
+	bool powered_off_shown;  // флаг для предотвращения повторной очистки
 
 	// яркость в шагах (0..APP_STEPS-1)
 	int brightStep;

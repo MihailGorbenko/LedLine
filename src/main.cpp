@@ -4,6 +4,16 @@
 #include "../lib/RotaryEncoder/RotaryEncoder.hpp"
 #include "../lib/Animations/StarsAnimation/StarsAnimation.hpp"
 #include "../lib/Animations/GradientAnimation/GradientAnimation.hpp"
+#include "../lib/Animations/RainbowChaseAnimation/RainbowChaseAnimation.hpp"
+#include "../lib/Animations/ScannerAnimation/ScannerAnimation.hpp"
+#include "../lib/Animations/PlasmaAnimation/PlasmaAnimation.hpp"
+#include "../lib/Animations/ConfettiAnimation/ConfettiAnimation.hpp"
+#include "../lib/Animations/SparkleWaveAnimation/SparkleWaveAnimation.hpp"
+#include "../lib/Animations/PulseWaveAnimation/PulseWaveAnimation.hpp"
+#include "../lib/Animations/MatrixRainAnimation/MatrixRainAnimation.hpp"
+#include "../lib/Animations/CosmicDustAnimation/CosmicDustAnimation.hpp"
+#include "../lib/Animations/NeonGridAnimation/NeonGridAnimation.hpp"
+#include "../lib/Animations/GalacticWarpAnimation/GalacticWarpAnimation.hpp"
 #include "../lib/Animations/PowerOffAnimation/PowerOffAnimation.hpp"
 #include "../lib/AppController/AppController.hpp"
 
@@ -12,6 +22,16 @@ LedMatrix matrix;
 RotaryEncoder rotary;
 GradientAnimation gradient(matrix);
 StarsAnimation stars(matrix);
+RainbowChaseAnimation rainbow(matrix);
+ScannerAnimation scanner(matrix);
+PlasmaAnimation plasma(matrix);
+ConfettiAnimation confetti(matrix);
+SparkleWaveAnimation sparkleWave(matrix);
+PulseWaveAnimation pulseWave(matrix);
+MatrixRainAnimation matrixRain(matrix);
+CosmicDustAnimation cosmicDust(matrix);
+NeonGridAnimation neonGrid(matrix);
+GalacticWarpAnimation galacticWarp(matrix);
 AppController app(matrix, rotary);
 
 void setup() {
@@ -29,14 +49,19 @@ void setup() {
 	// init hardware
 	matrix.init();
 
-	// rotary setup
-	rotary.init();
-	rotary.setSteps(1);
-	rotary.setBoundaries(0, 127, false);
-
 	// register animations
 	app.addAnimation(&gradient);
 	app.addAnimation(&stars);
+	app.addAnimation(&rainbow);
+	app.addAnimation(&scanner);
+	app.addAnimation(&plasma);
+	app.addAnimation(&confetti);
+	app.addAnimation(&sparkleWave);
+	app.addAnimation(&pulseWave);
+	app.addAnimation(&matrixRain);
+	app.addAnimation(&cosmicDust);
+	app.addAnimation(&neonGrid);
+	app.addAnimation(&galacticWarp);
 
 	// start controller (attaches to rotary)
 	app.begin();

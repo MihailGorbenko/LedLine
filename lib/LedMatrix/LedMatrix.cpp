@@ -28,14 +28,15 @@ void LedMatrix::setPixelHSV(int x, int y, uint8_t h, uint8_t s, uint8_t v) {
         return;
     }
     int index = XY(x, y);
-    if (index >= 0) {
-        // Сохраняем исходный цвет в RGB, затем масштабируем копию для вывода
-        CRGB orig = CHSV(h, s, v);
-        baseLeds[index] = orig;
-        CRGB out = orig;
-        out.nscale8_video(masterBrightness); // сохраняет относительные пропорции каналов → насыщенность не «выгорает»
-        leds[index] = out;
+    if (index < 0 || index >= NUM_LEDS) {
+        return;  // additional safety: XY might return invalid index
     }
+    // Сохраняем исходный цвет в RGB, затем масштабируем копию для вывода
+    CRGB orig = CHSV(h, s, v);
+    baseLeds[index] = orig;
+    CRGB out = orig;
+    out.nscale8_video(masterBrightness); // сохраняет относительные пропорции каналов → насыщенность не «выгорает»
+    leds[index] = out;
 }
 
 void LedMatrix::powerOff() {

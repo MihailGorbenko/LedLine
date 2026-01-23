@@ -1,0 +1,41 @@
+#include "SparkleWaveAnimation.hpp"
+#include <FastLED.h>
+
+SparkleWaveAnimation::SparkleWaveAnimation(LedMatrix& m)
+	: AnimationBase(m, SPARKLEWAVE_DEFAULT_HUE, SPARKLEWAVE_DEFAULT_SAT, SPARKLEWAVE_DEFAULT_VAL),
+	  sparkleChance(28) {
+}
+
+void SparkleWaveAnimation::setColorHSV(uint8_t h, uint8_t s, uint8_t v) {
+	// SparkleWave: hue drifts, but base hue is the offset
+	AnimationBase::setColorHSV(h, s, v);
+}
+
+void SparkleWaveAnimation::render() {
+	if (!matrix) return;
+	matrix->clear();
+
+	int w = matrix->width();
+	int hgt = matrix->height();
+	if (w <= 0) w = 1;
+	if (hgt <= 0) hgt = 1;
+
+	uint16_t t = (uint16_t)(millis() / 5);
+	for (int x = 0; x < w; ++x) {
+		uint8_t wave = sin8((uint8_t)(t + x * 10));
+		uint8_t vWave = scale8(val, qadd8(32, (wave >> 1)));
+		uint8_t hOut = (uint8_t)(hue + (wave >> 2));
+
+		for (int y = 0; y < hgt; ++y) {
+			// Add slight vertical variation
+			uint8_t vOut = (hgt >= 2) ? ((y == 0) ? vWave : scale8(vWave, 200)) : vWave;
+			// Occasional sparkle boost
+			if ((uint8_t)random(0, 255) < sparkleChance) {
+				vOut = qadd8(vOut, 120);
+			}
+			matrix->setPixelHSV(x, y, hOut, sat, vOut);
+		}
+	}
+
+	matrix->show();
+}
