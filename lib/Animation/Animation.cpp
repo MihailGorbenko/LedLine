@@ -3,7 +3,7 @@
 
 // Debug mode for NVS operations
 #ifndef ANIM_NVS_DEBUG
-#define ANIM_NVS_DEBUG 1
+#define ANIM_NVS_DEBUG 0
 #endif
 
 #if ANIM_NVS_DEBUG
