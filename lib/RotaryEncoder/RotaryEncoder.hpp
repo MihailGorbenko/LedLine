@@ -51,7 +51,7 @@ private:
 
     // added: per-instance quadrature/debounce state (supports multiple encoders)
     uint8_t _lastState;
-    int8_t  _accum;
+    int     _accum; // allow accumulation of multiple transitions between updates
     uint8_t _lastRawSw;
 
     // added: velocity/acceleration state and params

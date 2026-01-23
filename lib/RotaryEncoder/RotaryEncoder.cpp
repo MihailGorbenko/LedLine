@@ -24,6 +24,11 @@ static const int8_t TRANS_TABLE[16] = {
     0, -1,  1,  0
 };
 
+// added: position mapping for states 00,01,11,10 -> sequence indices 0..3
+static const int8_t POS_OF_STATE[4] = { 0, 1, 2, 3 }; // map by sequence order: 00,01,11,10
+// Note: states are encoded as (clk<<1)|dt -> values {0,1,3,2}, we'll index via a small remap
+static const uint8_t STATE_TO_POS_IDX[4] = { 0, 1, 3, 2 }; // index by state value -> position in seq(0..3)
+
 void RotaryEncoder::setAccelParams(unsigned long med_ms, unsigned long fast_ms, int med_mult, int fast_mult, float filterAlpha) {
     if (med_ms == 0) med_ms = 1;
     if (fast_ms == 0) fast_ms = 1;
@@ -106,31 +111,41 @@ void RotaryEncoder::update() {
     if (cur != _lastState) {
         uint8_t idx = (_lastState << 2) | cur;
         int8_t delta = TRANS_TABLE[idx];
+
+        if (delta == 0) {
+            // попытка восстановления: оценить насколько продвинулись по кольцу состояний
+            int8_t posLast = STATE_TO_POS_IDX[_lastState];
+            int8_t posCur  = STATE_TO_POS_IDX[cur];
+            int8_t diff = posCur - posLast;
+            if (diff > 2) diff -= 4;
+            if (diff < -2) diff += 4;
+            // diff теперь в диапазоне -2..2 (0, ±1, ±2)
+            delta = diff;
+        }
+
         if (delta != 0) {
             _accum += delta;
-            // clamp to avoid overflow/strange accumulation
-            if (_accum > 4) _accum = 4;
-            if (_accum < -4) _accum = -4;
-
-            // 4 transitions == one full step (в одну сторону)
-            if (_accum >= 4 || _accum <= -4) {
-                int dir = (_accum > 0) ? 1 : -1;
-
-                // compute dt and update smoothed velocity (steps/sec)
-                unsigned long dt_ms = (_lastStepMillis == 0) ? 0xFFFFFFFFUL : (now - _lastStepMillis);
-                float inst_vel = 0.0f;
-                if (dt_ms != 0xFFFFFFFFUL && dt_ms > 0) inst_vel = 1000.0f / (float)dt_ms; // steps per second (approx)
-                _vel = _velFilterAlpha * inst_vel + (1.0f - _velFilterAlpha) * _vel;
+            // process all full steps accumulated (4 transitions == 1 full step)
+            int fullSteps = _accum / 4; // may be >1 or < -1 on fast spin
+            if (fullSteps != 0) {
+                // compute dt and update smoothed velocity (steps/sec),
+                // account for number of steps processed
+                unsigned long dt_ms = (_lastStepMillis == 0) ? 0UL : (unsigned long)(now - _lastStepMillis);
+                if (dt_ms != 0UL) {
+                    float inst_vel = (1000.0f / (float)dt_ms) * (float)abs(fullSteps); // steps/sec
+                    _vel = _velFilterAlpha * inst_vel + (1.0f - _velFilterAlpha) * _vel;
+                }
 
                 // choose multiplier by dt (smaller dt => faster => larger mult)
                 int mult = 1;
-                if (dt_ms != 0xFFFFFFFFUL && dt_ms > 0) {
+                if (dt_ms != 0UL) {
                     if (dt_ms <= _accelFastMs) mult = _accelFastMult;
                     else if (dt_ms <= _accelMedMs) mult = _accelMedMult;
                 }
 
                 int old = _value;
-                _value += dir * _steps * mult;
+                // apply all full steps at once (fullSteps signed)
+                _value += fullSteps * _steps * mult;
                 if (_value > _maxV) {
                     if (_wrap) _value = _minV;
                     else _value = _maxV;
@@ -139,17 +154,18 @@ void RotaryEncoder::update() {
                     else _value = _minV;
                 }
                 if (_value != old) {
-                    notify(dir > 0 ? INCREMENT : DECREMENT, _value);
+                    notify((fullSteps > 0) ? INCREMENT : DECREMENT, _value);
                 }
 
-                // update lastStep timestamp and reset accum
+                // consume processed transitions, keep remainder (-3..3)
+                _accum -= fullSteps * 4;
                 _lastStepMillis = now;
-                _accum = 0;
             }
         } else {
-            // некорректный/скачкообразный переход — сбрасываем аккум для безопасности
-            _accum = 0;
+            // delta == 0 even after recovery -> неявное шумовое изменение состояния
+            // НЕ сбрасываем _accum чтобы не потерять накопленные переходы
         }
+
         _lastState = cur;
         _lastClk = (cur >> 1) & 1;
     }
