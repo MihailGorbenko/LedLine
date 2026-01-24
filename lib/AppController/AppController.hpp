@@ -36,6 +36,11 @@
 #define APP_SELECT_OVERLAY_MS 1000
 #endif
 
+// idle timeout to auto-switch to brightness (ms)
+#ifndef APP_IDLE_TIMEOUT_MS
+#define APP_IDLE_TIMEOUT_MS 10000
+#endif
+
 class AppController : public RotaryEncoder::IEncoderListener {
 public:
 	explicit AppController(LedMatrix& m, RotaryEncoder& enc);
@@ -57,7 +62,7 @@ public:
 	bool loadState();
 
 private:
-	enum Mode { MODE_SELECT_ANIM = 0, MODE_BRIGHTNESS = 1, MODE_COLOR = 2, MODE_POWEROFF = 3 };
+enum Mode { MODE_BRIGHTNESS = 0, MODE_SELECT_ANIM = 1, MODE_COLOR = 2, MODE_POWEROFF = 3 };
 
 	LedMatrix* matrix;
 	RotaryEncoder* encoder;
@@ -86,6 +91,7 @@ private:
 	// fps control
 	unsigned long lastFrameMillis;
 	unsigned long frameIntervalMs;
+	unsigned long lastActivityMillis;
 
 	// Вспомог.
 	void applyMasterBrightness(); // применить яркость к матрице/анимации

@@ -14,7 +14,7 @@ AppController::AppController(LedMatrix& m, RotaryEncoder& enc)
 	: matrix(&m),
 	  encoder(&enc),
 	  currentIndex(0),
-	  mode(MODE_SELECT_ANIM),
+	  mode(MODE_BRIGHTNESS),
 	  powered(true),
 	  powered_off_shown(false),
 	  brightStep(APP_STEPS/2),
@@ -25,7 +25,8 @@ AppController::AppController(LedMatrix& m, RotaryEncoder& enc)
 	  progressAnim(m),
 	  selectOverlayUntilMs(0),
 	  lastFrameMillis(0),
-	  frameIntervalMs(0) {
+	  frameIntervalMs(0),
+	  lastActivityMillis(0) {
 	// clamp to avoid 0ms interval on misconfigured APP_FPS
 	unsigned long interval = (APP_FPS > 0) ? (1000UL / (unsigned long)APP_FPS) : 33UL;
 	if (interval == 0) interval = 1;
@@ -52,12 +53,26 @@ void AppController::begin() {
 	DBG_PRINTF("[AppController] Loaded animation index: %d, brightness: %d\n", currentIndex, brightStep);
 
 	// sync encoder to current mode/value so acceleration affects controller logic
-	if (!animations.empty()) {
-		encoder->setBoundaries(0, (int)animations.size() - 1, true);
-		encoder->setValue(currentIndex);
-	} else {
-		encoder->setBoundaries(0, 0, false);
-		encoder->setValue(0);
+	switch (mode) {
+		case MODE_SELECT_ANIM:
+			if (!animations.empty()) {
+				encoder->setBoundaries(0, (int)animations.size() - 1, true);
+				encoder->setValue(currentIndex);
+			} else {
+				encoder->setBoundaries(0, 0, false);
+				encoder->setValue(0);
+			}
+			break;
+		case MODE_BRIGHTNESS:
+			encoder->setBoundaries(0, APP_STEPS - 1, false);
+			encoder->setValue(brightStep);
+			break;
+		case MODE_COLOR:
+			encoder->setBoundaries(0, APP_STEPS - 1, false);
+			encoder->setValue(colorStep);
+			break;
+		case MODE_POWEROFF:
+			break;
 	}
 
 	if (!animations.empty()) {
@@ -70,6 +85,7 @@ void AppController::begin() {
 		animations[currentIndex]->onActivate();
 	}
 	DBG_PRINTLN("[AppController] Initialization complete");
+	lastActivityMillis = millis();
 }
 
 void AppController::update() {
@@ -124,6 +140,25 @@ void AppController::update() {
 		return;
 	}
 
+	// Auto-switch to brightness on inactivity
+	if ((mode == MODE_SELECT_ANIM || mode == MODE_COLOR) && (millis() - lastActivityMillis >= APP_IDLE_TIMEOUT_MS)) {
+		// if leaving color mode, save the selected color for current animation
+		if (mode == MODE_COLOR) {
+			if (!animations.empty() && currentIndex >= 0 && currentIndex < (int)animations.size()) {
+				char key[32];
+				snprintf(key, sizeof(key), "anim_%d", currentIndex);
+				animations[currentIndex]->saveToNVS(key);
+			}
+		}
+		mode = MODE_BRIGHTNESS;
+		DBG_PRINTLN("[AppController] Auto-switch to BRIGHTNESS due to inactivity");
+		if (encoder) {
+			encoder->setBoundaries(0, APP_STEPS - 1, false);
+			encoder->setValue(brightStep);
+		}
+		lastActivityMillis = millis();
+	}
+
 	if (animations.empty()) return;
 	// Safe frame timing: protect against millis() wrap (~49 days on 32-bit)
 	unsigned long elapsed = (unsigned long)(now - lastFrameMillis);
@@ -151,6 +186,8 @@ void AppController::update() {
 }
 
 void AppController::onEvent(RotaryEncoder::Event ev, int value) {
+	// register user interaction for idle timeout
+	lastActivityMillis = millis();
 	if (ev == RotaryEncoder::PRESS_START) {
 		btnDown = true;
 		btnPressedMillis = millis();
@@ -172,7 +209,7 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 					matrix->show();
 				}
 				applyMasterBrightness();
-				mode = MODE_SELECT_ANIM;
+				mode = MODE_BRIGHTNESS;
 				DBG_PRINTLN("[AppController] POWERED ON - state restored from NVS");
 
 				// restore current animation settings (if any)
@@ -184,13 +221,27 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 					animations[currentIndex]->onActivate();
 				}
 
-				// sync encoder after power-on
-				if (!animations.empty()) {
-					encoder->setBoundaries(0, (int)animations.size() - 1, true);
-					encoder->setValue(currentIndex);
-				} else {
-					encoder->setBoundaries(0, 0, false);
-					encoder->setValue(0);
+				// sync encoder after power-on according to current mode
+				switch (mode) {
+					case MODE_SELECT_ANIM:
+						if (!animations.empty()) {
+							encoder->setBoundaries(0, (int)animations.size() - 1, true);
+							encoder->setValue(currentIndex);
+						} else {
+							encoder->setBoundaries(0, 0, false);
+							encoder->setValue(0);
+						}
+						break;
+					case MODE_BRIGHTNESS:
+						encoder->setBoundaries(0, APP_STEPS - 1, false);
+						encoder->setValue(brightStep);
+						break;
+					case MODE_COLOR:
+						encoder->setBoundaries(0, APP_STEPS - 1, false);
+						encoder->setValue(colorStep);
+						break;
+					case MODE_POWEROFF:
+						break;
 				}
 			}
 			return;
@@ -198,24 +249,24 @@ void AppController::onEvent(RotaryEncoder::Event ev, int value) {
 
 		if (held >= APP_POWEROFF_HOLD_MS) return;
 
-		// short press: cycle modes
+		// short press: cycle modes (Brightness -> Select Animation -> Color)
 		if (mode == MODE_COLOR) {
 			if (!animations.empty() && currentIndex >= 0 && currentIndex < (int)animations.size()) {
 				char key[32];
 				snprintf(key, sizeof(key), "anim_%d", currentIndex);
 				animations[currentIndex]->saveToNVS(key);
 			}
-			mode = MODE_SELECT_ANIM;
-			DBG_PRINTLN("[AppController] Mode: SELECT_ANIM (color saved)");
-		} else if (mode == MODE_SELECT_ANIM) {
 			mode = MODE_BRIGHTNESS;
-			DBG_PRINTLN("[AppController] Mode: BRIGHTNESS");
+			DBG_PRINTLN("[AppController] Mode: BRIGHTNESS (color saved)");
 		} else if (mode == MODE_BRIGHTNESS) {
+			mode = MODE_SELECT_ANIM;
+			DBG_PRINTLN("[AppController] Mode: SELECT_ANIM");
+		} else if (mode == MODE_SELECT_ANIM) {
 			mode = MODE_COLOR;
 			DBG_PRINTLN("[AppController] Mode: COLOR");
 		} else {
-			mode = MODE_SELECT_ANIM;
-			DBG_PRINTLN("[AppController] Mode: SELECT_ANIM");
+			mode = MODE_BRIGHTNESS;
+			DBG_PRINTLN("[AppController] Mode: BRIGHTNESS");
 		}
 
 		// sync encoder to new mode/value (so accel affects correct parameter)
