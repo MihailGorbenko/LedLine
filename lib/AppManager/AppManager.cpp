@@ -628,9 +628,9 @@ void AppManager::onEvent(RotaryEncoder::Event ev, int value) {
             }
             case State::Animation: {
                 if (!animMgr || !matrix) break;
-                // Require two encoder steps per animation change: accumulate delta and trigger when >=2
+                // One encoder step -> one animation change: accumulate delta and trigger per step
                 animEncAccum += delta;
-                int steps = animEncAccum / 2; // integer division toward zero
+                int steps = animEncAccum; // one step per encoder full-step
                 if (steps != 0) {
                     int absSteps = (steps > 0) ? steps : -steps;
                     for (int i = 0; i < absSteps; ++i) {
@@ -638,7 +638,7 @@ void AppManager::onEvent(RotaryEncoder::Event ev, int value) {
                         else animMgr->switchToPrevious();
                     }
                     // consume used steps
-                    animEncAccum -= steps * 2;
+                    animEncAccum -= steps;
                     matrix->clear();
                     matrix->update();
                     // AnimationManager handles loading/activation of target animations.

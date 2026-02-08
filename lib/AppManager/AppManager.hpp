@@ -158,7 +158,7 @@ private:
     // brightness and color ticks are small integers used for UI sliders
     int brightTicks; // 0..APP_BRIGHTNESS_TICKS
     int colorTicks;  // 0..APP_COLOR_TICKS
-    // Accumulator for encoder steps while in Animation state; every 2 steps -> one animation change
+    // Accumulator for encoder steps while in Animation state; one step -> one animation change
     int animEncAccum{0};
 
     // --- Persistence / config ---
