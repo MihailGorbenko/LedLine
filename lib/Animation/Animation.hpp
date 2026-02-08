@@ -59,6 +59,7 @@ public:
 	// Return whether the animation has been initialized
 	inline bool isInitialized() const { return initialized; }
 
+
 	// Animation name defined by subclasses (abstract)
 	virtual const char* getName() const = 0;
 

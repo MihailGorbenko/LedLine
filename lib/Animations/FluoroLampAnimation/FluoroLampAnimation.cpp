@@ -1,14 +1,10 @@
 #include "FluoroLampAnimation.hpp"
 #include <FastLED.h>
 
-FluoroLampAnimation::FluoroLampAnimation(LedMatrix& m)
-	: AnimationBase(m, FLUOROLAMP_DEFAULT_HUE, FLUOROLAMP_DEFAULT_SAT, FLUOROLAMP_DEFAULT_VAL),
+FluoroLampAnimation::FluoroLampAnimation(uint16_t id, LedMatrix& m)
+	: AnimationBase(FLUOROLAMP_DEFAULT_HUE, id, m),
 	  startedAt(millis()), warmupMs(1400), flickerAmt(22),
 	  blinkUntilMs(0), nextBlinkAtMs(0), blinkStartX(0), blinkLen(0) {
-}
-
-void FluoroLampAnimation::setColorHSV(uint8_t h, uint8_t s, uint8_t v) {
-	AnimationBase::setColorHSV(h, s, v);
 }
 
 void FluoroLampAnimation::setWarmupMs(uint16_t ms) { warmupMs = ms; }
@@ -21,23 +17,20 @@ void FluoroLampAnimation::reset() {
 }
 
 void FluoroLampAnimation::scheduleBlink(int w) {
-	if (w <= 0) return;
 	blinkStartX = (uint8_t)random(0, max(1, w - 1));
 	blinkLen = (uint8_t)random(1, min(5, w - blinkStartX));
 	blinkUntilMs = millis() + (unsigned long)random(30, 120); // very short flash
 }
 
 void FluoroLampAnimation::render() {
-	if (!matrix) return;
+	if (!isInitialized()) return;
 	unsigned long now = millis();
 
-	int w = matrix->width();
-	int hgt = matrix->height();
-	if (w <= 0) w = 1;
-	if (hgt <= 0) hgt = 1;
+	int w = mw;
+	int hgt = mh;
 
 	bool inWarmup = (unsigned long)(now - startedAt) < warmupMs;
-	uint8_t base = val;
+	uint8_t base = FLUOROLAMP_DEFAULT_VAL;
 
 	// Warmup ramp from dim to full
 	if (inWarmup) {
@@ -45,7 +38,7 @@ void FluoroLampAnimation::render() {
 		if (e > warmupMs) e = warmupMs;
 		uint8_t ramp = (uint8_t)((e * 255UL) / max(1UL, (unsigned long)warmupMs));
 		// Start from a dim level to simulate tube strike
-		base = qadd8(24, scale8(val, ramp));
+		base = qadd8(24, scale8(FLUOROLAMP_DEFAULT_VAL, ramp));
 
 		// Random quick blinks in segments along the tube
 		if (now >= nextBlinkAtMs) {
@@ -54,8 +47,9 @@ void FluoroLampAnimation::render() {
 		}
 	}
 
-	matrix->clear();
+	matrix.clear();
 
+	uint8_t baseHue = getConfig().hue;
 	// Continuous subtle flicker (post-warmup too)
 	// Use phase per column for spatial variation
 	for (int x = 0; x < w; ++x) {
@@ -80,9 +74,8 @@ void FluoroLampAnimation::render() {
 		for (int y = 0; y < hgt; ++y) {
 			// small vertical variation between rows, if present
 			uint8_t rowV = (y == 0 ? vCol : scale8(vCol, 235));
-			matrix->setPixelHSV(x, y, hue, sat, rowV);
+			matrix.setPixelHSV(x, y, baseHue, FLUOROLAMP_DEFAULT_SAT, rowV);
 		}
 	}
 
-	matrix->show();
 }

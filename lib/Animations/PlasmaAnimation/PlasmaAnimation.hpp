@@ -14,11 +14,20 @@
 #define PLASMA_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
+// Readable name macro (can be overridden before include)
+#ifndef PLASMA_ANIMATION_NAME
+#define PLASMA_ANIMATION_NAME "Plasma"
+#endif
+
 class PlasmaAnimation : public AnimationBase {
 public:
-	explicit PlasmaAnimation(LedMatrix& m);
-	void setColorHSV(uint8_t h, uint8_t s, uint8_t v) override;
+	explicit PlasmaAnimation(uint16_t id, LedMatrix& m);
+	const char* getName() const override { return PLASMA_ANIMATION_NAME; }
+	void onActivate() override { AnimationBase::onActivate(); mw = matrix.getWidth(); mh = matrix.getHeight(); }
 	void render() override;
+private:
+	int mw{0};
+	int mh{0};
 };
 
 #endif // PLASMA_ANIMATION_HPP

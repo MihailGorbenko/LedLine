@@ -14,15 +14,23 @@
 #define NEONGRID_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
+// Readable name macro (can be overridden before include)
+#ifndef NEONGRID_ANIMATION_NAME
+#define NEONGRID_ANIMATION_NAME "NeonGrid"
+#endif
+
 class NeonGridAnimation : public AnimationBase {
 public:
-	explicit NeonGridAnimation(LedMatrix& m);
-	void setColorHSV(uint8_t h, uint8_t s, uint8_t v) override;
+	explicit NeonGridAnimation(uint16_t id, LedMatrix& m);
+	const char* getName() const override { return NEONGRID_ANIMATION_NAME; }
+	void onActivate() override { AnimationBase::onActivate(); mw = matrix.getWidth(); mh = matrix.getHeight(); }
 	void render() override;
 
 private:
 	static const int MAX_W = MATRIX_WIDTH;
 	uint8_t gridPulse[MAX_W];  // per-column pulse state
+	int mw{0};
+	int mh{0};
 };
 
 #endif // NEON_GRID_ANIMATION_HPP

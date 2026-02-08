@@ -3,11 +3,12 @@
 
 #include <Arduino.h>
 #include <vector>
-#include "../Animation/Animation.hpp"
+#include "../../Animation/Animation.hpp"
+#include "../../StorageManager/Serializable.hpp"
 
-// default configuration (можно переопределить в проекте перед инклюдом)
+// default configuration (can be overridden in project before include)
 #ifndef STARS_DEFAULT_HUE
-#define STARS_DEFAULT_HUE 0
+#define STARS_DEFAULT_HUE 150
 #endif
 #ifndef STARS_DEFAULT_SAT
 #define STARS_DEFAULT_SAT 255
@@ -19,37 +20,51 @@
 #define STARS_STAR_COUNT 20
 #endif
 
+// Readable name
+#ifndef STARS_ANIMATION_NAME
+#define STARS_ANIMATION_NAME "Stars"
+#endif
 
 class StarsAnimation : public AnimationBase {
 public:
-	// принимает только матрицу; прочие параметры — дефайнами
-	explicit StarsAnimation(LedMatrix& m);
+    // default hue comes from defines; id and matrix are provided by main
+    explicit StarsAnimation(uint16_t id, LedMatrix& m);
 
-	// унаследованный метод: установить цвет (base хранит hue/sat/val)
-	void setColorHSV(uint8_t h, uint8_t s, uint8_t v) override;
+    // render one frame
+    void render() override;
 
-	// отрисовка кадра — вызывать часто из loop()
-	void render() override;
+    // activation hook to perform expensive preparation
+    void onActivate() override;
 
-	// сохраняет/загружает цвет анимации в NVS под заданным ключом
-	bool saveColor(const char* key);
-	bool loadColor(const char* key);
+    const char* getName() const override { return STARS_ANIMATION_NAME; }
 
 private:
-	struct Star {
-		uint8_t x;
-		uint8_t y;
-		uint8_t brightness;    // текущее значение яркости (0..255)
-		uint8_t target;        // целевая яркость
-		unsigned long nextChangeMillis;
-	};
+    struct Star {
+        uint8_t x;
+        uint8_t y;
+        uint8_t brightness;    // current brightness value (0..255)
+        uint8_t target;        // target brightness
+        unsigned long nextChangeMillis;
+        // Parallax: depth layer and sub-pixel X position/velocity
+        uint8_t depth;          // 0=far (slow), 1=mid, 2=near (fast)
+        int32_t xfp;            // fixed-point X (8.8), x = xfp >> 8
+        int8_t vfp;             // X velocity in fixed-point (px*256/frame)
+        // Smooth twinkle: phase and speed of sinusoidal modulation
+        uint8_t twPhase;        // 0..255
+        uint8_t twSpeed;        // small values for slow twinkle
+    };
 
-	std::vector<Star> stars;
-	int starCount;
-	
+    std::vector<Star> stars;
+    int starCount;
+    // timestamp of last frame for dt-dependent motion
+    uint32_t lastMillis = 0;
 
-	// вспомогательные
-	void randomizeStar(Star& s);
+    // cached matrix size populated in onActivate()
+    int cachedWidth = 0;
+    int cachedHeight = 0;
+
+    // helpers
+    void randomizeStar(Star& s, int w, int h);
 };
 
 #endif // STARS_ANIMATION_HPP

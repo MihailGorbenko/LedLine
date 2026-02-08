@@ -1,24 +1,16 @@
 #include "ScannerAnimation.hpp"
 #include <FastLED.h>
 
-ScannerAnimation::ScannerAnimation(LedMatrix& m)
-	: AnimationBase(m, SCANNER_DEFAULT_HUE, SCANNER_DEFAULT_SAT, SCANNER_DEFAULT_VAL),
-	  tail(255) {
-}
-
-void ScannerAnimation::setColorHSV(uint8_t h, uint8_t s, uint8_t v) {
-	// Scanner: hue is the main color, sat and val control appearance
-	AnimationBase::setColorHSV(h, s, v);
-}
+ScannerAnimation::ScannerAnimation(uint16_t id, LedMatrix& m)
+	: AnimationBase(SCANNER_DEFAULT_HUE, id, m),
+	  tail(255) {}
 
 void ScannerAnimation::render() {
-	if (!matrix) return;
-	matrix->clear();
+	if (!isInitialized()) return;
+	matrix.clear();
 
-	int w = matrix->width();
-	int hgt = matrix->height();
-	if (w <= 1) w = 2;
-	if (hgt <= 0) hgt = 1;
+	int w = mw;
+	int hgt = mh;
 
 	// Ping-pong position (triangle wave)
 	const uint16_t periodMs = 18; // smaller = faster
@@ -27,19 +19,16 @@ void ScannerAnimation::render() {
 	uint32_t phase = step % (2 * span);
 	int head = (phase <= span) ? (int)phase : (int)(2 * span - phase);
 
+	uint8_t baseHue = getConfig().hue;
 	for (int x = 0; x < w; ++x) {
 		int dist = abs(x - head);
-		// Tail falloff: dist 0 => 255, larger dist => smaller
 		uint8_t fall = qsub8(255, (uint8_t)min(255, dist * 32));
-		uint8_t vOut = scale8(val, scale8(fall, tail));
+		uint8_t vOut = scale8(SCANNER_DEFAULT_VAL, scale8(fall, tail));
 		if (vOut == 0) continue;
 
-		// Alternate rows for extra motion on 2-row matrices
 		for (int y = 0; y < hgt; ++y) {
 			uint8_t rowMask = (hgt >= 2) ? (uint8_t)((y == (head & 1)) ? 255 : 170) : 255;
-			matrix->setPixelHSV(x, y, hue, sat, scale8(vOut, rowMask));
+			matrix.setPixelHSV(x, y, baseHue, SCANNER_DEFAULT_SAT, scale8(vOut, rowMask));
 		}
 	}
-
-	matrix->show();
 }

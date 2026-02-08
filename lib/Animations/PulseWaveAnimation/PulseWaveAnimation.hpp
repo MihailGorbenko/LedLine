@@ -14,14 +14,22 @@
 #define PULSEWAVE_DEFAULT_VAL ANIMATION_DEFAULT_VAL
 #endif
 
+// Readable name macro (can be overridden before include)
+#ifndef PULSEWAVE_ANIMATION_NAME
+#define PULSEWAVE_ANIMATION_NAME "PulseWave"
+#endif
+
 class PulseWaveAnimation : public AnimationBase {
 public:
-	explicit PulseWaveAnimation(LedMatrix& m);
-	void setColorHSV(uint8_t h, uint8_t s, uint8_t v) override;
+	explicit PulseWaveAnimation(uint16_t id, LedMatrix& m);
+	const char* getName() const override { return PULSEWAVE_ANIMATION_NAME; }
+	void onActivate() override { AnimationBase::onActivate(); mw = matrix.getWidth(); mh = matrix.getHeight(); }
 	void render() override;
 
 private:
 	uint8_t pulseRadius;  // 0..255
+	int mw{0};
+	int mh{0};
 };
 
 #endif // PULSE_WAVE_ANIMATION_HPP

@@ -1,6 +1,5 @@
 ﻿#include <Arduino.h>
 #include "debug.hpp"
-#include <Preferences.h>
 #include "../lib/LedMatrix/LedMatrix.hpp"
 #include "../lib/RotaryEncoder/RotaryEncoder.hpp"
 #include "../lib/Animations/StarsAnimation/StarsAnimation.hpp"
@@ -8,14 +7,11 @@
 #include "../lib/Animations/PlasmaAnimation/PlasmaAnimation.hpp"
 #include "../lib/Animations/SparkleWaveAnimation/SparkleWaveAnimation.hpp"
 #include "../lib/Animations/PulseWaveAnimation/PulseWaveAnimation.hpp"
-#include "../lib/Animations/SegmentRunnerAnimation/SegmentRunnerAnimation.hpp"
-#include "../lib/Animations/CenterPulseAnimation/CenterPulseAnimation.hpp"
-#include "../lib/Animations/MatrixCodeRainAnimation/MatrixCodeRainAnimation.hpp"
-#include "../lib/Animations/EqualizerBarsAnimation/EqualizerBarsAnimation.hpp"
-#include "../lib/Animations/EnergyCirclesAnimation/EnergyCirclesAnimation.hpp"
-#include "../lib/Animations/ReactorTurbinesAnimation/ReactorTurbinesAnimation.hpp"
-#include "../lib/Animations/ChargingPulseAnimation/ChargingPulseAnimation.hpp"
-#include "../lib/Animations/PowerOffAnimation/PowerOffAnimation.hpp"
+#include "../lib/Animations/MatrixRainAnimation/MatrixRainAnimation.hpp"
+#include "../lib/Animations/NeonGridAnimation/NeonGridAnimation.hpp"
+#include "../lib/Animations/ScannerAnimation/ScannerAnimation.hpp"
+#include "../lib/Animations/GalacticWarpAnimation/GalacticWarpAnimation.hpp"
+#include "../lib/Animations/FluoroLampAnimation/FluoroLampAnimation.hpp"
 #include "../lib/AnimationManager/AnimationManager.hpp"
 #include "../lib/StorageManager/StorageManager.hpp"
 #include "../lib/AppManager/AppManager.hpp"
@@ -28,33 +24,30 @@ AnimationManager animMgr(storage);
 AppManager app(animMgr, rotary, matrix, storage);
 
 
-#define ANIM_ID_STARS 1
-#define ANIM_ID_RAINBOW 2
-#define ANIM_ID_PLASMA 3
-#define ANIM_ID_SPARKLE_WAVE 4
-#define ANIM_ID_PULSE_WAVE 5
-#define ANIM_ID_SEGMENT_RUNNER 6
-#define ANIM_ID_CENTER_PULSE 7
-#define ANIM_ID_CODE_RAIN 8
-#define ANIM_ID_EQUALIZER_BARS 9
-#define ANIM_ID_ENERGY_CIRCLES 10
-#define ANIM_ID_REACTOR_TURBINES 11
-#define ANIM_ID_CHARGING_PULSE 12
+// Stable IDs for available animations
+#define ANIM_ID_STARS           1
+#define ANIM_ID_RAINBOW         2
+#define ANIM_ID_PLASMA          3
+#define ANIM_ID_SPARKLE_WAVE    4
+#define ANIM_ID_PULSE_WAVE      5
+#define ANIM_ID_MATRIX_RAIN     6
+#define ANIM_ID_NEON_GRID       7
+#define ANIM_ID_SCANNER         8
+#define ANIM_ID_GALACTIC_WARP   9
+#define ANIM_ID_FLUORO_LAMP     10
 
 
 
-StarsAnimation stars(ANIM_ID_STARS, matrix);
-RainbowChaseAnimation rainbow(ANIM_ID_RAINBOW, matrix);
-PlasmaAnimation plasma(ANIM_ID_PLASMA, matrix);
-SparkleWaveAnimation sparkleWave(ANIM_ID_SPARKLE_WAVE, matrix);
-PulseWaveAnimation pulseWave(ANIM_ID_PULSE_WAVE, matrix);
-SegmentRunnerAnimation segmentRunner(ANIM_ID_SEGMENT_RUNNER, matrix);
-CenterPulseAnimation centerPulse(ANIM_ID_CENTER_PULSE, matrix);
-MatrixCodeRainAnimation codeRain(ANIM_ID_CODE_RAIN, matrix);
-EqualizerBarsAnimation equalizerBars(ANIM_ID_EQUALIZER_BARS, matrix);
-EnergyCirclesAnimation energyCircles(ANIM_ID_ENERGY_CIRCLES, matrix);
-ReactorTurbinesAnimation reactorTurbines(ANIM_ID_REACTOR_TURBINES, matrix);
-ChargingPulseAnimation chargingPulse(ANIM_ID_CHARGING_PULSE, matrix);
+StarsAnimation         stars(ANIM_ID_STARS, matrix);
+RainbowChaseAnimation  rainbow(ANIM_ID_RAINBOW, matrix);
+PlasmaAnimation        plasma(ANIM_ID_PLASMA, matrix);
+SparkleWaveAnimation   sparkleWave(ANIM_ID_SPARKLE_WAVE, matrix);
+PulseWaveAnimation     pulseWave(ANIM_ID_PULSE_WAVE, matrix);
+MatrixRainAnimation    matrixRain(ANIM_ID_MATRIX_RAIN, matrix);
+NeonGridAnimation      neonGrid(ANIM_ID_NEON_GRID, matrix);
+ScannerAnimation       scanner(ANIM_ID_SCANNER, matrix);
+GalacticWarpAnimation  galacticWarp(ANIM_ID_GALACTIC_WARP, matrix);
+FluoroLampAnimation    fluoro(ANIM_ID_FLUORO_LAMP, matrix);
 
 
 
@@ -66,26 +59,24 @@ void setup() {
 	// If you need to wait for a USB CDC connection on native USB boards,
 	// enable an explicit build-time flag and implement a conditional wait.
 	LOG_PRINTLN("\n\n========================================");
-	LOG_PRINTLN("  LumioMonolith - LED Matrix Animation System");
+	LOG_PRINTLN(" LedLine - LED Matrix Animation System");
 	LOG_PRINTLN("========================================");
-	LOG_PRINTLN("Starting LumioMonolith...");
+	LOG_PRINTLN("Starting LedLine...");
 	#endif
 
 	matrix.init();
 	rotary.init();
-		// Register animations with the manager
-	animMgr.addAnimation(&centerPulse);
-	animMgr.addAnimation(&pulseWave);
-	animMgr.addAnimation(&segmentRunner);
-	animMgr.addAnimation(&energyCircles);
-	animMgr.addAnimation(&stars);
-	animMgr.addAnimation(&codeRain);
-	animMgr.addAnimation(&equalizerBars);
-	animMgr.addAnimation(&plasma);
-	animMgr.addAnimation(&sparkleWave);
-	animMgr.addAnimation(&reactorTurbines);
-	animMgr.addAnimation(&chargingPulse);
-	animMgr.addAnimation(&rainbow);
+		// Register animations with the manager (order = rotation order)
+		animMgr.addAnimation(&stars);
+		animMgr.addAnimation(&rainbow);
+		animMgr.addAnimation(&plasma);
+		animMgr.addAnimation(&sparkleWave);
+		animMgr.addAnimation(&pulseWave);
+		animMgr.addAnimation(&matrixRain);
+		animMgr.addAnimation(&neonGrid);
+		animMgr.addAnimation(&scanner);
+		animMgr.addAnimation(&galacticWarp);
+		animMgr.addAnimation(&fluoro);
 
 	animMgr.init();
 	rotary.attachListener(&app);
