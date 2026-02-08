@@ -4,11 +4,12 @@
 #include <Arduino.h>
 #include <vector>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 #include "../../StorageManager/Serializable.hpp"
 
 // default configuration (can be overridden in project before include)
 #ifndef STARS_DEFAULT_HUE
-#define STARS_DEFAULT_HUE 150
+#define STARS_DEFAULT_HUE 200
 #endif
 #ifndef STARS_DEFAULT_SAT
 #define STARS_DEFAULT_SAT 255

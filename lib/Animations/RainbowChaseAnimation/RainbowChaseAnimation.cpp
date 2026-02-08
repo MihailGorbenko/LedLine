@@ -14,7 +14,7 @@ void RainbowChaseAnimation::render() {
 	const uint8_t speed = 6; // higher = faster
 	uint8_t t = (uint8_t)((millis() / speed) & 0xFF);
 
-	uint8_t baseHue = getConfig().hue;
+	uint8_t baseHue = animCfg.hue;
 	// Moving rainbow, slight row offset for 2-row matrices
 	for (int x = 0; x < w; ++x) {
 		uint8_t xHue = (uint8_t)(baseHue + t + (uint8_t)((x * 256) / max(1, w)));

@@ -16,7 +16,7 @@ void PulseWaveAnimation::render() {
 	uint16_t t = (uint16_t)(millis() / 6);
 	uint8_t centerX = (uint8_t)(w / 2);
 	
-	uint8_t baseHue = getConfig().hue;
+	uint8_t baseHue = animCfg.hue;
 	for (int x = 0; x < w; ++x) {
 		int dist = abs(x - (int)centerX);
 		uint8_t wave1 = sin8((uint8_t)t + (dist * 4));

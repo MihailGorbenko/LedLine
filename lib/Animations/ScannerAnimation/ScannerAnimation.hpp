@@ -3,9 +3,10 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 #ifndef SCANNER_DEFAULT_HUE
-#define SCANNER_DEFAULT_HUE 0
+#define SCANNER_DEFAULT_HUE 150
 #endif
 #ifndef SCANNER_DEFAULT_SAT
 #define SCANNER_DEFAULT_SAT 255

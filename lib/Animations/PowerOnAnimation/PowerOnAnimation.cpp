@@ -6,19 +6,17 @@ void PowerOnAnimation::render() {
     int w = matrix.width();
     int h = matrix.height();
 
-    // Противоположное направление к PowerOff:
-    // progress=255 => все столбцы полные; растет справа-налево
-    int filledFromRight = (int)((uint32_t)progress * (uint32_t)w / 255U);
+    // Fill left-to-right: progress=255 => all columns full; grows from left to right
+    int filledColumns = (int)((uint32_t)progress * (uint32_t)w / 255U);
     int rem = (int)(((uint32_t)progress * (uint32_t)w) % 255U); // 0..254
-    int startFull = w - filledFromRight; // индексация полной области [startFull..w-1]
 
     for (int x = 0; x < w; ++x) {
         uint8_t colV = 0;
-        if (x > startFull && filledFromRight > 0) {
-            // внутри полной правой области
+        if (x < filledColumns && filledColumns > 0) {
+            // fully inside filled left area
             colV = val;
-        } else if (x == startFull && filledFromRight > 0) {
-            // частичная пограничная колонка
+        } else if (x == filledColumns && filledColumns < w) {
+            // partial boundary column
             colV = (uint8_t)((uint32_t)rem * (uint32_t)val / 255U);
         } else {
             colV = 0;

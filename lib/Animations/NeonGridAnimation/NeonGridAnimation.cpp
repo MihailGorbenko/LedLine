@@ -15,7 +15,7 @@ void NeonGridAnimation::render() {
 
 	uint16_t t = (uint16_t)(millis() / 8);
 
-	uint8_t baseHue = getConfig().hue;
+	uint8_t baseHue = animCfg.hue;
 	// Horizontal grid lines (constant)
 	for (int x = 0; x < w; ++x) {
 		uint8_t baseIntensity = 255; // allow full brightness

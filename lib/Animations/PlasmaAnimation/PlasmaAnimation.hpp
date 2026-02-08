@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 #ifndef PLASMA_DEFAULT_HUE
 #define PLASMA_DEFAULT_HUE 160

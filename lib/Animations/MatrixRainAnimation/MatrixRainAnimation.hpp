@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 #ifndef MATRIXRAIN_DEFAULT_HUE
 #define MATRIXRAIN_DEFAULT_HUE 96  // green (classic Matrix style)

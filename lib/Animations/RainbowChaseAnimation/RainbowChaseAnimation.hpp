@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 // Default configuration (can be overridden at compile time)
 #ifndef RAINBOWCHASE_DEFAULT_HUE

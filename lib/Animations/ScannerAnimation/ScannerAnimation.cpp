@@ -19,7 +19,7 @@ void ScannerAnimation::render() {
 	uint32_t phase = step % (2 * span);
 	int head = (phase <= span) ? (int)phase : (int)(2 * span - phase);
 
-	uint8_t baseHue = getConfig().hue;
+	uint8_t baseHue = animCfg.hue;
 	for (int x = 0; x < w; ++x) {
 		int dist = abs(x - head);
 		uint8_t fall = qsub8(255, (uint8_t)min(255, dist * 32));

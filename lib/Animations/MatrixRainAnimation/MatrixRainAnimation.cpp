@@ -37,7 +37,7 @@ void MatrixRainAnimation::render() {
 		}
 	}
 
-	uint8_t baseHue = getConfig().hue;
+	uint8_t baseHue = animCfg.hue;
 	// Render rain streaks
 	for (int x = 0; x < w; ++x) {
 		for (int y = 0; y < hgt; ++y) {

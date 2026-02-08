@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 #ifndef PULSEWAVE_DEFAULT_HUE
 #define PULSEWAVE_DEFAULT_HUE 200  // cyan

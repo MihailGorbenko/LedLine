@@ -3,10 +3,11 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 // Default: low saturation to look like white fluorescent light
 #ifndef FLUOROLAMP_DEFAULT_HUE
-#define FLUOROLAMP_DEFAULT_HUE 0
+#define FLUOROLAMP_DEFAULT_HUE 20
 #endif
 #ifndef FLUOROLAMP_DEFAULT_SAT
 #define FLUOROLAMP_DEFAULT_SAT 10

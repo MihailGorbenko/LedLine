@@ -628,17 +628,24 @@ void AppManager::onEvent(RotaryEncoder::Event ev, int value) {
             }
             case State::Animation: {
                 if (!animMgr || !matrix) break;
-                int steps = (delta > 0) ? delta : -delta;
-                for (int i = 0; i < steps; ++i) {
-                    if (delta > 0) animMgr->switchToNext();
-                    else animMgr->switchToPrevious();
+                // Require two encoder steps per animation change: accumulate delta and trigger when >=2
+                animEncAccum += delta;
+                int steps = animEncAccum / 2; // integer division toward zero
+                if (steps != 0) {
+                    int absSteps = (steps > 0) ? steps : -steps;
+                    for (int i = 0; i < absSteps; ++i) {
+                        if (steps > 0) animMgr->switchToNext();
+                        else animMgr->switchToPrevious();
+                    }
+                    // consume used steps
+                    animEncAccum -= steps * 2;
+                    matrix->clear();
+                    matrix->update();
+                    // AnimationManager handles loading/activation of target animations.
+                    uint16_t id = animMgr ? animMgr->getCurrentId() : 0;
+                    const char* name = animMgr ? animMgr->getCurrentName() : "";
+                    DBG_PRINTF("[Animation] switched to id=%u (%s)\n", (unsigned)id, name ? name : "");
                 }
-                matrix->clear();
-                matrix->update();
-                // AnimationManager handles loading/activation of target animations.
-                uint16_t id = animMgr ? animMgr->getCurrentId() : 0;
-                const char* name = animMgr ? animMgr->getCurrentName() : "";
-                DBG_PRINTF("[Animation] switched to id=%u (%s)\n", (unsigned)id, name ? name : "");
                 break;
             }
             case State::Color: {

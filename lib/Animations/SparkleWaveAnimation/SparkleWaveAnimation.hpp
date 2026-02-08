@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 #ifndef SPARKLEWAVE_DEFAULT_HUE
 #define SPARKLEWAVE_DEFAULT_HUE 96

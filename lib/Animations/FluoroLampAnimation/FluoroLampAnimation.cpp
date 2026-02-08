@@ -49,7 +49,7 @@ void FluoroLampAnimation::render() {
 
 	matrix.clear();
 
-	uint8_t baseHue = getConfig().hue;
+	uint8_t baseHue = animCfg.hue;
 	// Continuous subtle flicker (post-warmup too)
 	// Use phase per column for spatial variation
 	for (int x = 0; x < w; ++x) {

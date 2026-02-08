@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 #ifndef NEONGRID_DEFAULT_HUE
 #define NEONGRID_DEFAULT_HUE 160  // cyan

@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "../../Animation/Animation.hpp"
+#include "../../LedMatrix/LedMatrix.hpp"
 
 #ifndef GALACTICWARP_DEFAULT_HUE
 #define GALACTICWARP_DEFAULT_HUE 240  // blue/purple

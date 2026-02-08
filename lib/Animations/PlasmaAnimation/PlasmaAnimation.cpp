@@ -13,7 +13,7 @@ void PlasmaAnimation::render() {
 
 	uint16_t t = (uint16_t)(millis() / 4);
 
-	uint8_t baseHue = getConfig().hue;
+	uint8_t baseHue = animCfg.hue;
 	for (int x = 0; x < w; ++x) {
 		uint8_t sx = sin8((uint8_t)(x * 8 + (t & 0xFF)));
 		for (int y = 0; y < hgt; ++y) {
